@@ -1,0 +1,82 @@
+'use client';
+import { useState, useEffect } from 'react';
+import Link from 'next/link'; // Adicionado
+import { useCart } from '@/context/CartContext';
+
+export default function AmplifierCard({ produto }) {
+  const { addToCart } = useCart();
+
+  if (!produto) return null;
+
+  const { nome, categoria, descricao, pastaImagens } = produto;
+  
+  const imagens = ['HeroShot.png', 'BackPanel.png', 'Macro.png', 'LifeStyle.png'];
+  const [index, setIndex] = useState(0);
+
+  const getCor = () => {
+    switch(categoria) {
+      case "Kunumi": return "text-tupaMarrom";
+      case "Guitarra": return "text-tupaBege";
+      case "Baixo": return "text-tupaVerdeMusgo";
+      default: return "text-tupaGold";
+    }
+  };
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setIndex((prev) => (prev + 1) % imagens.length);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="border border-tupaWood bg-tupaGrey p-6 rounded-lg transition-all hover:border-tupaGold group shadow-lg flex flex-col h-full">
+      
+      {/* Container da Imagem (AGORA CLICÁVEL) */}
+      <div className="h-64 mb-6 rounded overflow-hidden relative border border-tupaWood/50">
+        <Link href={`/loja/${produto.id}`}>
+          <img 
+            src={`/img/${pastaImagens}/${imagens[index]}`} 
+            alt={nome} 
+            className="w-full h-full object-cover transition-all duration-700 ease-in-out cursor-pointer hover:scale-105 hover:opacity-90"
+            onError={(e) => { e.target.src = '/img/placeholder.png'; }}
+          />
+        </Link>
+        
+        <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-2 pointer-events-none">
+          {imagens.map((_, i) => (
+            <div 
+              key={i} 
+              className={`w-2 h-2 rounded-full transition-colors ${index === i ? 'bg-tupaGold' : 'bg-white/50'}`} 
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Informações do Produto */}
+      <h3 className={`text-2xl font-serif mb-3 ${getCor()}`}>
+        {nome}
+      </h3>
+      <p className="text-tupaOffWhite text-sm mb-6 leading-relaxed flex-grow">
+        {descricao}
+      </p>
+      
+      {/* Botões de Ação */}
+      <div className="mt-auto space-y-3">
+        <button 
+          onClick={() => addToCart(produto)}
+          className="w-full text-center bg-tupaBlack text-tupaGold border border-tupaGold py-2 rounded hover:bg-tupaGold hover:text-tupaBlack transition-colors uppercase font-bold text-sm tracking-widest"
+        >
+          Adicionar ao Carrinho
+        </button>
+        
+        <Link 
+          href={`/loja/${produto.id}`} 
+          className="block w-full text-center text-tupaSilver text-xs underline hover:text-tupaGold transition-colors"
+        >
+          Ver detalhes técnicos
+        </Link>
+      </div>
+    </div>
+  );
+}
