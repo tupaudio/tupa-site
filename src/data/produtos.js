@@ -107,7 +107,7 @@ export const produtos = [
     nome: "Produto de Teste - Integração MP",
     categoria: "Teste",
     tecnologia: "Digital",
-    preco: 0.92, // O valor do seu teste!
+    preco: 0.02, // O valor do seu teste!
     estoque: 10, // Muito importante ter estoque > 0 para o botão "Comprar" aparecer
     peso: 1, // Necessário caso você já tenha cálculo de frete ativado
     comprimento: 10,
