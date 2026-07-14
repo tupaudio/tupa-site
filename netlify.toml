@@ -1,0 +1,7 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[context.production.environment]
+  # Isso desabilita o scanner apenas para o ambiente de produção
+  NETLIFY_SKIP_SECRET_SCAN = "true"
