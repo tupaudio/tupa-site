@@ -1,10 +1,15 @@
+export const metadata = {
+  title: 'Prazos e Entrega — Tupã Áudio',
+  description: 'Como funciona o envio dos amplificadores Tupã Áudio: transportadoras, prazos e rastreamento.',
+};
+
 export default function PrazosPage() {
   return (
     <main className="max-w-4xl mx-auto p-10 min-h-screen">
       <h1 className="text-4xl font-serif text-tupaGold mb-12 text-center uppercase tracking-widest">
         Prazos e Entrega
       </h1>
-      
+
       <div className="space-y-6 text-tupaSilver text-lg leading-relaxed">
         <p>
           A Tupã Áudio atua em parceria com os Correios (PAC e Sedex), além de transportadoras terceirizadas consolidadas como Jadlog e Loggi, visando a integridade física dos equipamentos que saem da nossa oficina até chegarem à sua casa ou estúdio.

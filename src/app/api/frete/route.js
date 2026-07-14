@@ -3,29 +3,44 @@ import { NextResponse } from 'next/server';
 export async function POST(request) {
   try {
     const body = await request.json();
-    // Agora recebemos um array de 'itens' em vez de um único 'produto'
     const { cepDestino, itens } = body;
 
     const cepOrigem = process.env.CEP_ORIGEM;
     const token = process.env.MELHOR_ENVIO_TOKEN;
 
-    // Transformamos a lista do seu carrinho no formato exigido pelo Melhor Envio
-    const productsPayload = itens.map((item) => ({
-      id: item.id.toString(),
-      weight: item.peso || 15, // Se não tiver peso, assume 15kg
-      width: item.largura || 50,
-      height: item.altura || 30,
-      length: item.comprimento || 40,
-      insurance_value: item.preco || 3500, // O valor do seguro soma automaticamente
-      quantity: item.quantidade || 1 // Multiplica o peso por X unidades
-    }));
+    const productsPayload = itens.map((item) => {
+      // Proteção contra os dois formatos possíveis de dimensão:
+      // "40x35x25" (string, como está hoje em produtos.js) ou
+      // largura/altura/comprimento já separados.
+      let largura = item.largura;
+      let altura = item.altura;
+      let comprimento = item.comprimento;
+
+      if ((!largura || !altura || !comprimento) && typeof item.dimensoes === 'string') {
+        const partes = item.dimensoes.split('x').map((n) => parseFloat(n.trim()));
+        if (partes.length === 3 && partes.every((n) => !Number.isNaN(n))) {
+          [largura, altura, comprimento] = partes;
+        }
+      }
+
+      return {
+        id: item.id.toString(),
+        // ATENÇÃO: produtos.js usa "pesoKg", não "peso" — cobrindo os dois.
+        weight: item.peso || item.pesoKg || 15,
+        width: largura || 50,
+        height: altura || 30,
+        length: comprimento || 40,
+        insurance_value: item.preco || 3500,
+        quantity: item.quantidade || 1
+      };
+    });
 
     const url = 'https://www.melhorenvio.com.br/api/v2/me/shipment/calculate';
-    
+
     const payload = {
       from: { postal_code: cepOrigem },
       to: { postal_code: cepDestino.replace(/\D/g, '') },
-      products: productsPayload, // Enviamos a lista completa de produtos
+      products: productsPayload,
       options: {
         receipt: false,
         own_hand: false
@@ -44,21 +59,20 @@ export async function POST(request) {
     });
 
     const data = await response.json();
-    
+
     if (!response.ok) {
       return NextResponse.json({ error: 'Erro ao calcular na transportadora' }, { status: 400 });
     }
 
-    // Filtra as transportadoras válidas
     const transportadorasDisponiveis = data.filter(t => t.price && t.error === undefined);
-// Filtro de Transportadoras Autorizadas pela Tupã Áudio
-    const transportadorasAutorizadas = ['Correios', 'Loggi', 'Total Express'];
-    const transportadorasFiltradas = transportadorasDisponiveis.filter(t => 
-  transportadorasAutorizadas.some(autorizada => t.company.name.includes(autorizada))
-);
 
-return NextResponse.json(transportadorasFiltradas);
-    return NextResponse.json(transportadorasDisponiveis);
+    // Filtro de transportadoras autorizadas pela Tupã Áudio
+    const transportadorasAutorizadas = ['Correios', 'Loggi', 'Total Express'];
+    const transportadorasFiltradas = transportadorasDisponiveis.filter(t =>
+      transportadorasAutorizadas.some((autorizada) => t.company?.name?.includes(autorizada))
+    );
+
+    return NextResponse.json(transportadorasFiltradas);
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: 'Erro interno no servidor' }, { status: 500 });

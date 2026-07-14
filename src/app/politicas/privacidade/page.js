@@ -1,10 +1,15 @@
+export const metadata = {
+  title: 'Política de Privacidade — Tupã Áudio',
+  description: 'Como a Tupã Áudio trata os dados dos seus clientes durante o processo de compra.',
+};
+
 export default function PrivacidadePage() {
   return (
     <main className="max-w-4xl mx-auto p-10 min-h-screen">
       <h1 className="text-4xl font-serif text-tupaGold mb-12 text-center uppercase tracking-widest">
         Política de Privacidade
       </h1>
-      
+
       <div className="space-y-6 text-tupaSilver text-lg leading-relaxed">
         <p>
           Durante o processo de compra, você informará apenas os dados cadastrais essenciais para cobrança, emissão de nota fiscal e envio da encomenda. Estas informações são utilizadas estritamente para o processamento de suas compras. Os seus dados cadastrais só poderão ser acessados e alterados por você mesmo, em sua área restrita de cliente.

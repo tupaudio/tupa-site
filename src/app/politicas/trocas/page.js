@@ -1,10 +1,15 @@
+export const metadata = {
+  title: 'Trocas e Devoluções — Tupã Áudio',
+  description: 'Garantia, defeitos de fabricação e devolução por arrependimento nos amplificadores Tupã Áudio.',
+};
+
 export default function TrocasPage() {
   return (
     <main className="max-w-4xl mx-auto p-10 min-h-screen">
       <h1 className="text-4xl font-serif text-tupaGold mb-12 text-center uppercase tracking-widest">
         Trocas e Devoluções
       </h1>
-      
+
       <div className="space-y-6 text-tupaSilver text-lg leading-relaxed">
         <h2 className="text-2xl font-serif text-tupaGold mt-8 mb-4">Garantia e Produtos com Defeito</h2>
         <p>

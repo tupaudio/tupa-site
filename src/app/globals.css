@@ -1,7 +1,4 @@
 @import "tailwindcss";
-/*@tailwind base;
-/*@tailwind components;*/
-@tailwind utilities;
 
 @theme {
   --color-tupaGold: #D4AF37;

@@ -10,7 +10,11 @@ export default function AmplifierCard({ produto }) {
 
   const { nome, categoria, descricao, pastaImagens } = produto;
   
-  const imagens = ['HeroShot.png', 'BackPanel.png', 'Macro.png', 'LifeStyle.png'];
+  // Convenção única de imagens do projeto: 1.png a 6.png dentro de
+  // /img/<pastaImagens>/ — a mesma usada na página de detalhe do produto.
+  // (Antes este componente usava HeroShot.png/BackPanel.png/etc,
+  // incompatível com a página de detalhe — unificado aqui.)
+  const imagens = ['1.png', '2.png', '3.png', '4.png'];
   const [index, setIndex] = useState(0);
 
   const getCor = () => {
@@ -39,7 +43,10 @@ export default function AmplifierCard({ produto }) {
             src={`/img/${pastaImagens}/${imagens[index]}`} 
             alt={nome} 
             className="w-full h-full object-cover transition-all duration-700 ease-in-out cursor-pointer hover:scale-105 hover:opacity-90"
-            onError={(e) => { e.target.src = '/img/placeholder.png'; }}
+            onError={(e) => {
+              e.target.onerror = null; // evita loop se o placeholder também faltar
+              e.target.src = '/img/placeholder.png';
+            }}
           />
         </Link>
         
