@@ -101,7 +101,7 @@ export const produtos = [
     especificacoes: { potencia: "300W", entradasSaidas: "Input, FX Loop", controles: "Gain, EQ, Master" },
     descricao: "Cabeçote de baixo híbrido portátil.",
     descricaoLonga: "O melhor dos dois mundos: calor valvulado no pré e precisão analógica na potência. Soco firme e definição cristalina."
-  }
+  },
   {
     id: 999, // Um ID alto para não conflitar com os reais
     nome: "Produto de Teste - Integração MP",
