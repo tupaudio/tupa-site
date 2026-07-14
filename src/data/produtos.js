@@ -109,10 +109,8 @@ export const produtos = [
     tecnologia: "Digital",
     preco: 0.02, // O valor do seu teste!
     estoque: 10, // Muito importante ter estoque > 0 para o botão "Comprar" aparecer
-    peso: 1, // Necessário caso você já tenha cálculo de frete ativado
-    comprimento: 10,
-    largura: 10,
-    altura: 10,
+    peso: 1.0, // Necessário caso você já tenha cálculo de frete ativado
+    imensoes: "10x12x15",
     pastaImagens: "guitarra/ara-5w-5f1", // Usando a imagem do Arã apenas como "placeholder" para não quebrar o layout
     descricao: "Este é um produto temporário apenas para testar o checkout do Mercado Pago no ambiente de produção."
   }

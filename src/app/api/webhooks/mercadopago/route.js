@@ -1,68 +1,125 @@
 import { NextResponse } from 'next/server';
-import { MercadoPagoConfig, Payment } from 'mercadopago';
-import { Resend } from 'resend';
-import { render } from '@react-email/render';
-import OrderConfirmation from '@/emails/OrderConfirmation';
-import WorkshopNotification from '@/emails/WorkshopNotification';
 
-const client = new MercadoPagoConfig({ accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN });
-const paymentClient = new Payment(client);
-const resend = new Resend(process.env.RESEND_API_KEY);
+// =========================================================
+// TUPÃ ÁUDIO — Webhook do Mercado Pago
+// Recebe a notificação de mudança de status de pagamento,
+// confirma o pagamento direto na API do Mercado Pago (nunca
+// confiamos só no que chega na notificação) e, se aprovado,
+// dispara e-mail pra oficina + cliente e um WhatsApp pra você.
+//
+// Variáveis de ambiente necessárias (Vercel → Settings → Environment Variables):
+//   MERCADO_PAGO_ACCESS_TOKEN → já existe, reaproveitado aqui
+//   RESEND_API_KEY            → chave da Resend (envio de e-mail)
+//   EMAIL_REMETENTE           → e-mail de onde os avisos saem (ex: pedidos@tupaaudio.com.br)
+//   EMAIL_OFICINA             → seu e-mail, recebe aviso de novo pedido
+//   CALLMEBOT_PHONE           → seu número de WhatsApp (com DDI, ex: 5527999999999)
+//   CALLMEBOT_APIKEY          → chave gerada pelo CallMeBot (veja o passo a passo)
+// =========================================================
 
-export async function POST(req) {
+export async function POST(request) {
   try {
-    const body = await req.json();
-    const topic = body.topic || body.type || null;
-    const dataId = body.id || body.data?.id || body['data.id'] || body.data?.resource?.id;
+    const params = request.nextUrl.searchParams;
+    const corpo = await request.json().catch(() => ({}));
 
-    if (!dataId) {
-      console.warn('Webhook Mercado Pago sem id de pagamento:', body);
-      return NextResponse.json({ received: true }, { status: 400 });
+    // O Mercado Pago manda o id do pagamento na query OU no corpo,
+    // dependendo do tipo de notificação — cobrimos os dois formatos.
+    const paymentId = params.get('data.id') || corpo?.data?.id || params.get('id');
+    const tipo = params.get('type') || corpo?.type;
+
+    if (!paymentId || (tipo && tipo !== 'payment')) {
+      return NextResponse.json({ ok: true }); // ignora notificações que não são de pagamento
     }
 
-    const paymentResult = await paymentClient.get({ id: dataId.toString() });
-    const payment = paymentResult.response || paymentResult;
-    const status = payment?.status;
+    // Confirma o pagamento direto na API do Mercado Pago (fonte confiável —
+    // nunca confie só no conteúdo da notificação recebida)
+    const respostaMP = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+      headers: { Authorization: `Bearer ${process.env.MERCADO_PAGO_ACCESS_TOKEN}` },
+    });
+    const pagamento = await respostaMP.json();
 
-    console.info('Mercado Pago webhook recebido:', { id: dataId, status, topic });
-
-    if (status === 'approved') {
-      try {
-        const customerEmail = payment?.payer?.email;
-        const order = {
-          id: payment?.id,
-          amount: payment?.transaction_amount,
-          items: payment?.additional_info?.items || [],
-        };
-
-        if (customerEmail) {
-          const htmlCustomer = render(<OrderConfirmation order={order} customer={payment?.payer} />);
-          await resend.emails.send({
-            from: process.env.TUPA_EMAIL_FROM || 'Tupã Áudio <no-reply@tupaaudio.com>',
-            to: customerEmail,
-            subject: `Confirmação do pedido ${order.id}`,
-            html: htmlCustomer,
-          });
-        }
-
-        const workshopEmail = process.env.TUPA_WORKSHOP_EMAIL || 'oficina@tupaaudio.com';
-        const htmlWorkshop = render(<WorkshopNotification order={order} customer={payment?.payer} payment={payment} />);
-        await resend.emails.send({
-          from: process.env.TUPA_EMAIL_FROM || 'Tupã Áudio <no-reply@tupaaudio.com>',
-          to: workshopEmail,
-          subject: `Novo pedido aprovado ${order.id}`,
-          html: htmlWorkshop,
-        });
-
-        console.info('E-mails enviados (cliente e oficina) para pagamento aprovado', { id: dataId });
-      } catch (sendError) {
-        console.error('Erro ao enviar e-mails do webhook:', sendError);
-      }
+    if (!respostaMP.ok) {
+      return NextResponse.json({ ok: true });
     }
 
-    return NextResponse.json({ received: true });
+    // Só age quando o pagamento estiver de fato aprovado
+    if (pagamento.status === 'approved') {
+      const nomeCliente = pagamento.metadata?.cliente_nome || pagamento.payer?.first_name || 'Cliente';
+      const emailCliente = pagamento.metadata?.cliente_email || pagamento.payer?.email;
+      const itens = pagamento.metadata?.itens_resumo || 'Ver detalhes no painel do Mercado Pago';
+      const total = pagamento.transaction_amount;
+
+      await Promise.allSettled([
+        enviarEmailOficina({ nomeCliente, emailCliente, itens, total, paymentId }),
+        enviarEmailCliente({ nomeCliente, emailCliente, itens, total }),
+        enviarWhatsAppOficina({ nomeCliente, itens, total, paymentId }),
+      ]);
+    }
+
+    return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error('Erro no webhook Mercado Pago:', error);
-    return NextResponse.json({ error: error?.message || 'Erro interno' }, { status: 500 });
+    console.error('Erro no webhook do Mercado Pago:', error);
+    // Sempre responde 200 — se devolvermos erro, o Mercado Pago fica
+    // reenviando a mesma notificação repetidamente.
+    return NextResponse.json({ ok: true });
   }
+}
+
+async function enviarEmailOficina({ nomeCliente, emailCliente, itens, total, paymentId }) {
+  if (!process.env.RESEND_API_KEY || !process.env.EMAIL_OFICINA) return;
+
+  await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: process.env.EMAIL_REMETENTE,
+      to: process.env.EMAIL_OFICINA,
+      subject: `🔨 Novo pedido pago — ${nomeCliente}`,
+      html: `
+        <h2>Novo pedido aprovado!</h2>
+        <p><strong>Cliente:</strong> ${nomeCliente} (${emailCliente || 'sem e-mail'})</p>
+        <p><strong>Itens:</strong> ${itens}</p>
+        <p><strong>Total:</strong> R$ ${Number(total).toFixed(2)}</p>
+        <p><strong>ID do pagamento (Mercado Pago):</strong> ${paymentId}</p>
+      `,
+    }),
+  });
+}
+
+async function enviarEmailCliente({ nomeCliente, emailCliente, itens, total }) {
+  if (!process.env.RESEND_API_KEY || !emailCliente) return;
+
+  await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: process.env.EMAIL_REMETENTE,
+      to: emailCliente,
+      subject: 'Seu pedido na Tupã Áudio foi confirmado 🎸',
+      html: `
+        <h2>Obrigado pela compra, ${nomeCliente}!</h2>
+        <p>Recebemos seu pagamento e seu pedido já entrou na fila da nossa bancada.</p>
+        <p><strong>Itens:</strong> ${itens}</p>
+        <p><strong>Total:</strong> R$ ${Number(total).toFixed(2)}</p>
+        <p>Em breve você recebe atualizações sobre a produção e o envio.</p>
+      `,
+    }),
+  });
+}
+
+async function enviarWhatsAppOficina({ nomeCliente, itens, total, paymentId }) {
+  if (!process.env.CALLMEBOT_PHONE || !process.env.CALLMEBOT_APIKEY) return;
+
+  const texto = encodeURIComponent(
+    `🔨 Novo pedido pago!\nCliente: ${nomeCliente}\nItens: ${itens}\nTotal: R$ ${Number(total).toFixed(2)}\nID MP: ${paymentId}`
+  );
+
+  await fetch(
+    `https://api.callmebot.com/whatsapp.php?phone=${process.env.CALLMEBOT_PHONE}&text=${texto}&apikey=${process.env.CALLMEBOT_APIKEY}`
+  );
 }
