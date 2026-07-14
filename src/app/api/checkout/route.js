@@ -18,10 +18,7 @@ export async function POST(req) {
 
     const preference = new Preference(client);
 
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-    // O Mercado Pago só aceita "approved" (ou omitir o campo).
-    // Além disso, auto_return exige URL pública em https — em localhost
-    // ele rejeita, então só ativamos quando a URL não for local.
+    const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, '');
     const urlPublicaValida = baseUrl.startsWith('https://');
 
     const corpo = {
@@ -36,13 +33,13 @@ export async function POST(req) {
         email: cliente.email.trim(),
       },
       back_urls: {
-        success: `${baseUrl}/carrinho/sucesso`,
-        failure: `${baseUrl}/carrinho/falha`,
-        pending: `${baseUrl}/carrinho/pendente`
+        success: `${baseUrl}/sucesso`,
+        failure: `${baseUrl}/falha`,
+        pending: `${baseUrl}/pendente`,
       },
+      notification_url: `${baseUrl}/api/webhooks/mercadopago`,
     };
 
-    // Só inclui auto_return se a URL for pública — evita o erro de validação
     if (urlPublicaValida) {
       corpo.auto_return = 'approved';
     }
