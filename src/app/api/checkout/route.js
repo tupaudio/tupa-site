@@ -40,11 +40,12 @@ export async function POST(req) {
       payer: {
         name: cliente.nome.trim(),
         email: cliente.email.trim(),
+        ...(cliente.doc ? { identification: { type: cliente.doc.replace(/\D/g, '').length > 11 ? 'CNPJ' : 'CPF', number: cliente.doc.replace(/\D/g, '') } } : {}),
       },
       back_urls: {
-        success: `${baseUrl}/carrinho/sucesso`,
-        failure: `${baseUrl}/carrinho/falha`,
-        pending: `${baseUrl}/carrinho/pendente`
+        success: `${baseUrl}/sucesso`,
+        failure: `${baseUrl}/falha`,
+        pending: `${baseUrl}/pendente`
       },
       external_reference: externalReference,
       // Metadata: guardamos os dados do pedido aqui porque este projeto
@@ -53,7 +54,11 @@ export async function POST(req) {
       metadata: {
         cliente_nome: cliente.nome.trim(),
         cliente_email: cliente.email.trim(),
-        itens_resumo: items.map((i) => `${i.quantidade || 1}x ${i.nome}`).join(', '),
+        cliente_telefone: cliente.telefone || '',
+        cliente_endereco: cliente.endereco
+          ? `${cliente.endereco.rua}, ${cliente.endereco.numero} ${cliente.endereco.complemento || ''} — ${cliente.endereco.bairro}, ${cliente.endereco.cidade}/${cliente.endereco.uf}`
+          : '',
+        itens_json: JSON.stringify(items.map((i) => ({ title: i.nome, quantity: i.quantidade || 1 }))),
       },
     };
 
