@@ -102,4 +102,18 @@ export const produtos = [
     descricao: "Cabeçote de baixo híbrido portátil.",
     descricaoLonga: "O melhor dos dois mundos: calor valvulado no pré e precisão analógica na potência. Soco firme e definição cristalina."
   }
+  {
+    id: 999, // Um ID alto para não conflitar com os reais
+    nome: "Produto de Teste - Integração MP",
+    categoria: "Teste",
+    tecnologia: "Digital",
+    preco: 0.92, // O valor do seu teste!
+    estoque: 10, // Muito importante ter estoque > 0 para o botão "Comprar" aparecer
+    peso: 1, // Necessário caso você já tenha cálculo de frete ativado
+    comprimento: 10,
+    largura: 10,
+    altura: 10,
+    pastaImagens: "guitarra/ara-5w-5f1", // Usando a imagem do Arã apenas como "placeholder" para não quebrar o layout
+    descricao: "Este é um produto temporário apenas para testar o checkout do Mercado Pago no ambiente de produção."
+  }
 ];
