@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { MercadoPagoConfig, Payment } from 'mercadopago';
-import Resend from 'resend';
+import { Resend } from 'resend';
 import { render } from '@react-email/render';
 import OrderConfirmation from '@/emails/OrderConfirmation';
 import WorkshopNotification from '@/emails/WorkshopNotification';
