@@ -4,6 +4,18 @@ import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
 import CalculadoraFrete from '@/components/CalculadoraFrete';
 
+function IconeLixeira() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 6 5 6 21 6"></polyline>
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+      <path d="M10 11v6"></path>
+      <path d="M14 11v6"></path>
+      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+    </svg>
+  );
+}
+
 export default function CarrinhoPage() {
   const { cart, removeFromCart, updateQuantity } = useCart();
   const [nome, setNome] = useState('');
@@ -21,15 +33,26 @@ export default function CarrinhoPage() {
   const formatarPreco = (valor) =>
     valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  const finalizarCompra = async () => {
+  // Validação centralizada: todo campo marcado com * passa por aqui.
+  // É chamada tanto pelo clique no botão quanto pelo onSubmit do form
+  // (que o navegador dispara também no Enter) — cobre os dois casos.
+  const validar = () => {
+    if (!nome.trim()) return 'Preencha seu nome completo.';
+    if (!email.trim()) return 'Preencha seu e-mail.';
+    if (!email.includes('@') || !email.includes('.')) return 'Digite um e-mail válido.';
+    if (!endereco.rua.trim() || !endereco.numero.trim() || !endereco.cidade.trim() || !endereco.uf.trim()) {
+      return 'Preencha o endereço de entrega completo (rua, número, cidade e UF).';
+    }
+    return null;
+  };
+
+  const finalizarCompra = async (e) => {
+    e.preventDefault();
     setErro('');
 
-    if (!nome.trim() || !email.trim()) {
-      setErro('Preencha nome e e-mail para continuar.');
-      return;
-    }
-    if (!email.includes('@')) {
-      setErro('Digite um e-mail válido.');
+    const mensagemErro = validar();
+    if (mensagemErro) {
+      setErro(mensagemErro);
       return;
     }
 
@@ -65,7 +88,7 @@ export default function CarrinhoPage() {
       }
 
       window.location.href = data.init_point;
-    } catch (e) {
+    } catch (err) {
       setErro('Erro ao conectar com o pagamento. Tente novamente.');
       setCarregando(false);
     }
@@ -82,26 +105,29 @@ export default function CarrinhoPage() {
     );
   }
 
-  return (
-    <main className="max-w-6xl mx-auto p-10 grid md:grid-cols-3 gap-12 text-tupaOffWhite">
-      {/* Lista de itens */}
-      <div className="md:col-span-2 space-y-4">
-        <h1 className="text-3xl font-serif text-tupaGold mb-6 uppercase tracking-widest">Carrinho</h1>
+  const campoClasse = "w-full min-w-0 bg-tupaBlack border border-tupaWood rounded px-4 py-2 text-tupaOffWhite placeholder-tupaSilver/50 focus:outline-none focus:border-tupaGold transition-colors";
 
+  return (
+    <main className="max-w-4xl mx-auto p-6 md:p-10 text-tupaOffWhite space-y-8">
+      <h1 className="text-3xl font-serif text-tupaGold uppercase tracking-widest">Carrinho</h1>
+
+      {/* Caixa 1: lista de itens */}
+      <div className="bg-tupaGrey border border-tupaWood rounded-lg p-6 space-y-4">
         {cart.map((item) => (
-          <div key={item.id} className="flex items-center gap-4 bg-tupaGrey border border-tupaWood rounded-lg p-4">
+          <div key={item.id} className="flex flex-wrap items-center gap-4 border-b border-tupaWood/30 pb-4 last:border-0 last:pb-0">
             <img
               src={`/img/${item.pastaImagens}/1.png`}
               alt={item.nome}
-              className="w-20 h-20 object-cover rounded border border-tupaWood/50"
+              className="w-20 h-20 object-cover rounded border border-tupaWood/50 shrink-0"
               onError={(e) => { e.target.onerror = null; e.target.src = '/img/placeholder.png'; }}
             />
-            <div className="flex-1">
+            <div className="flex-1 min-w-[140px]">
               <h3 className="font-serif text-lg text-tupaOffWhite">{item.nome}</h3>
               <p className="text-tupaSilver text-sm">{formatarPreco(item.preco)} / unidade</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <button
+                type="button"
                 onClick={() => updateQuantity(item.id, item.quantidade - 1)}
                 className="w-8 h-8 border border-tupaWood rounded hover:border-tupaGold transition-colors"
               >
@@ -109,6 +135,7 @@ export default function CarrinhoPage() {
               </button>
               <span className="w-6 text-center">{item.quantidade}</span>
               <button
+                type="button"
                 onClick={() => updateQuantity(item.id, item.quantidade + 1)}
                 className="w-8 h-8 border border-tupaWood rounded hover:border-tupaGold transition-colors"
               >
@@ -116,18 +143,21 @@ export default function CarrinhoPage() {
               </button>
             </div>
             <button
+              type="button"
               onClick={() => removeFromCart(item.id)}
-              className="text-red-400 text-xs underline hover:text-red-300 transition-colors ml-2"
+              title="Remover item"
+              aria-label="Remover item"
+              className="shrink-0 w-9 h-9 flex items-center justify-center border border-tupaWood rounded text-red-400 hover:text-red-300 hover:border-red-400 transition-colors"
             >
-              Remover
+              <IconeLixeira />
             </button>
           </div>
         ))}
       </div>
 
-      {/* Resumo / checkout */}
-      <div className="bg-tupaGrey border border-tupaWood rounded-lg p-6 h-fit space-y-4">
-        <h2 className="text-tupaGold font-serif text-xl mb-2">Resumo do pedido</h2>
+      {/* Caixa 2: resumo + frete */}
+      <div className="bg-tupaGrey border border-tupaWood rounded-lg p-6 space-y-4">
+        <h2 className="text-tupaGold font-serif text-xl">Resumo do pedido</h2>
 
         <div className="flex justify-between text-sm text-tupaSilver">
           <span>Subtotal</span>
@@ -145,97 +175,107 @@ export default function CarrinhoPage() {
         </div>
 
         <CalculadoraFrete itens={cart} onSelecionar={setFrete} />
+      </div>
 
-        <div className="space-y-3 pt-4 border-t border-tupaWood">
+      {/* Caixa 3: dados do cliente e pagamento — embaixo de tudo, como pedido */}
+      <form onSubmit={finalizarCompra} className="bg-tupaGrey border border-tupaWood rounded-lg p-6 space-y-4">
+        <h2 className="text-tupaGold font-serif text-xl mb-2">Seus dados</h2>
+        <p className="text-tupaSilver text-xs">Campos com * são obrigatórios.</p>
+
+        <div className="grid sm:grid-cols-2 gap-4">
           <input
+            required
             type="text"
-            placeholder="Nome completo / Razão social"
+            placeholder="Nome completo / Razão social *"
             value={nome}
             onChange={(e) => setNome(e.target.value)}
-            className="w-full bg-tupaBlack border border-tupaWood rounded px-4 py-2 text-tupaOffWhite placeholder-tupaSilver/50 focus:outline-none focus:border-tupaGold transition-colors"
+            className={campoClasse}
           />
           <input
+            required
             type="email"
-            placeholder="Seu e-mail"
+            placeholder="Seu e-mail *"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full bg-tupaBlack border border-tupaWood rounded px-4 py-2 text-tupaOffWhite placeholder-tupaSilver/50 focus:outline-none focus:border-tupaGold transition-colors"
+            className={campoClasse}
           />
           <input
             type="text"
             placeholder="CPF / CNPJ (para nota fiscal)"
             value={doc}
             onChange={(e) => setDoc(e.target.value)}
-            className="w-full bg-tupaBlack border border-tupaWood rounded px-4 py-2 text-tupaOffWhite placeholder-tupaSilver/50 focus:outline-none focus:border-tupaGold transition-colors"
+            className={campoClasse}
           />
           <input
             type="tel"
             placeholder="Telefone / WhatsApp"
             value={telefone}
             onChange={(e) => setTelefone(e.target.value)}
-            className="w-full bg-tupaBlack border border-tupaWood rounded px-4 py-2 text-tupaOffWhite placeholder-tupaSilver/50 focus:outline-none focus:border-tupaGold transition-colors"
+            className={campoClasse}
           />
-
-          <p className="text-tupaGold text-xs uppercase tracking-widest pt-2">Endereço de entrega</p>
-          <input
-            type="text"
-            placeholder="Rua / Logradouro"
-            value={endereco.rua}
-            onChange={(e) => setEndereco({ ...endereco, rua: e.target.value })}
-            className="w-full bg-tupaBlack border border-tupaWood rounded px-4 py-2 text-tupaOffWhite placeholder-tupaSilver/50 focus:outline-none focus:border-tupaGold transition-colors"
-          />
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Nº"
-              value={endereco.numero}
-              onChange={(e) => setEndereco({ ...endereco, numero: e.target.value })}
-              className="w-20 bg-tupaBlack border border-tupaWood rounded px-4 py-2 text-tupaOffWhite placeholder-tupaSilver/50 focus:outline-none focus:border-tupaGold transition-colors"
-            />
-            <input
-              type="text"
-              placeholder="Complemento"
-              value={endereco.complemento}
-              onChange={(e) => setEndereco({ ...endereco, complemento: e.target.value })}
-              className="flex-1 bg-tupaBlack border border-tupaWood rounded px-4 py-2 text-tupaOffWhite placeholder-tupaSilver/50 focus:outline-none focus:border-tupaGold transition-colors"
-            />
-          </div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Bairro"
-              value={endereco.bairro}
-              onChange={(e) => setEndereco({ ...endereco, bairro: e.target.value })}
-              className="flex-1 bg-tupaBlack border border-tupaWood rounded px-4 py-2 text-tupaOffWhite placeholder-tupaSilver/50 focus:outline-none focus:border-tupaGold transition-colors"
-            />
-            <input
-              type="text"
-              placeholder="Cidade"
-              value={endereco.cidade}
-              onChange={(e) => setEndereco({ ...endereco, cidade: e.target.value })}
-              className="flex-1 bg-tupaBlack border border-tupaWood rounded px-4 py-2 text-tupaOffWhite placeholder-tupaSilver/50 focus:outline-none focus:border-tupaGold transition-colors"
-            />
-            <input
-              type="text"
-              placeholder="UF"
-              maxLength={2}
-              value={endereco.uf}
-              onChange={(e) => setEndereco({ ...endereco, uf: e.target.value.toUpperCase() })}
-              className="w-16 bg-tupaBlack border border-tupaWood rounded px-4 py-2 text-tupaOffWhite placeholder-tupaSilver/50 focus:outline-none focus:border-tupaGold transition-colors"
-            />
-          </div>
         </div>
 
-        {erro && <p className="text-red-400 text-sm">{erro}</p>}
+        <p className="text-tupaGold text-xs uppercase tracking-widest pt-2">Endereço de entrega *</p>
+        <div className="grid sm:grid-cols-3 gap-4">
+          <input
+            required
+            type="text"
+            placeholder="Rua / Logradouro *"
+            value={endereco.rua}
+            onChange={(e) => setEndereco({ ...endereco, rua: e.target.value })}
+            className={`${campoClasse} sm:col-span-2`}
+          />
+          <input
+            required
+            type="text"
+            placeholder="Nº *"
+            value={endereco.numero}
+            onChange={(e) => setEndereco({ ...endereco, numero: e.target.value })}
+            className={campoClasse}
+          />
+          <input
+            type="text"
+            placeholder="Complemento"
+            value={endereco.complemento}
+            onChange={(e) => setEndereco({ ...endereco, complemento: e.target.value })}
+            className={campoClasse}
+          />
+          <input
+            type="text"
+            placeholder="Bairro"
+            value={endereco.bairro}
+            onChange={(e) => setEndereco({ ...endereco, bairro: e.target.value })}
+            className={campoClasse}
+          />
+          <input
+            required
+            type="text"
+            placeholder="Cidade *"
+            value={endereco.cidade}
+            onChange={(e) => setEndereco({ ...endereco, cidade: e.target.value })}
+            className={campoClasse}
+          />
+          <input
+            required
+            type="text"
+            placeholder="UF *"
+            maxLength={2}
+            value={endereco.uf}
+            onChange={(e) => setEndereco({ ...endereco, uf: e.target.value.toUpperCase() })}
+            className={campoClasse}
+          />
+        </div>
+
+        {erro && <p className="text-red-400 text-sm font-bold">{erro}</p>}
 
         <button
-          onClick={finalizarCompra}
+          type="submit"
           disabled={carregando}
           className="w-full bg-tupaGold text-tupaBlack py-3 rounded font-bold uppercase tracking-widest hover:bg-white transition-colors disabled:opacity-50"
         >
           {carregando ? 'Processando...' : 'Finalizar Compra'}
         </button>
-      </div>
+      </form>
     </main>
   );
 }

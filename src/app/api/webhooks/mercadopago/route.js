@@ -23,14 +23,17 @@ import WorkshopNotification from '@/emails/WorkshopNotification';
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 export async function POST(request) {
+  console.log('[webhook mercadopago] recebido');
   try {
     const params = request.nextUrl.searchParams;
     const corpo = await request.json().catch(() => ({}));
+    console.log('[webhook mercadopago] query:', Object.fromEntries(params), 'corpo:', corpo);
 
     const paymentId = params.get('data.id') || corpo?.data?.id || params.get('id');
     const tipo = params.get('type') || corpo?.type;
 
     if (!paymentId || (tipo && tipo !== 'payment')) {
+      console.log('[webhook mercadopago] ignorado — sem paymentId ou tipo diferente de payment. tipo:', tipo);
       return NextResponse.json({ ok: true });
     }
 
@@ -38,12 +41,15 @@ export async function POST(request) {
       headers: { Authorization: `Bearer ${process.env.MERCADO_PAGO_ACCESS_TOKEN}` },
     });
     const pagamento = await respostaMP.json();
+    console.log('[webhook mercadopago] status do pagamento:', pagamento.status, 'id:', paymentId);
 
     if (!respostaMP.ok) {
+      console.error('[webhook mercadopago] erro ao consultar pagamento na API do MP:', pagamento);
       return NextResponse.json({ ok: true });
     }
 
     if (pagamento.status === 'approved') {
+      console.log('[webhook mercadopago] pagamento aprovado, disparando notificações...');
       const nomeCliente = pagamento.metadata?.cliente_nome || pagamento.payer?.first_name || 'Cliente';
       const emailCliente = pagamento.metadata?.cliente_email || pagamento.payer?.email;
       const telefoneCliente = pagamento.metadata?.cliente_telefone || '';
@@ -64,12 +70,21 @@ export async function POST(request) {
       const customer = { name: nomeCliente, email: emailCliente, telefone: telefoneCliente, endereco: enderecoCliente };
       const payment = { id: pagamento.id, status: pagamento.status, payment_method_id: pagamento.payment_method_id };
 
-      await Promise.allSettled([
+      const resultados = await Promise.allSettled([
         enviarEmailOficina({ order, customer, payment }),
         enviarEmailCliente({ order, customer }),
         enviarWhatsAppOficina({ order, customer, payment }),
         descontarEstoque(order.items),
       ]);
+
+      const nomes = ['email-oficina', 'email-cliente', 'whatsapp-oficina', 'desconto-estoque'];
+      resultados.forEach((r, i) => {
+        if (r.status === 'rejected') {
+          console.error(`[webhook mercadopago] falhou: ${nomes[i]}:`, r.reason);
+        } else {
+          console.log(`[webhook mercadopago] ok: ${nomes[i]}`);
+        }
+      });
     }
 
     return NextResponse.json({ ok: true });
@@ -82,7 +97,7 @@ export async function POST(request) {
 }
 
 async function enviarEmailOficina({ order, customer, payment }) {
-  if (!resend || !process.env.EMAIL_OFICINA) return;
+  if (!resend || !process.env.EMAIL_OFICINA) { console.warn('[webhook mercadopago] email-oficina pulado: RESEND_API_KEY ou EMAIL_OFICINA ausente'); return; }
 
   await resend.emails.send({
     from: process.env.EMAIL_REMETENTE,
@@ -93,7 +108,7 @@ async function enviarEmailOficina({ order, customer, payment }) {
 }
 
 async function enviarEmailCliente({ order, customer }) {
-  if (!resend || !customer.email) return;
+  if (!resend || !customer.email) { console.warn('[webhook mercadopago] email-cliente pulado: RESEND_API_KEY ou e-mail do cliente ausente'); return; }
 
   await resend.emails.send({
     from: process.env.EMAIL_REMETENTE,
@@ -104,7 +119,7 @@ async function enviarEmailCliente({ order, customer }) {
 }
 
 async function enviarWhatsAppOficina({ order, customer, payment }) {
-  if (!process.env.CALLMEBOT_PHONE || !process.env.CALLMEBOT_APIKEY) return;
+  if (!process.env.CALLMEBOT_PHONE || !process.env.CALLMEBOT_APIKEY) { console.warn('[webhook mercadopago] whatsapp pulado: CALLMEBOT_PHONE ou CALLMEBOT_APIKEY ausente'); return; }
 
   const listaItens = order.items.map((i) => `${i.quantity}x ${i.title}`).join(', ');
   const texto = encodeURIComponent(
