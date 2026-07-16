@@ -1,11 +1,22 @@
 "use client";
 import CalculadoraFrete from '@/components/CalculadoraFrete';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCart } from '@/context/CartContext';
 
 export default function DetalheProdutoClient({ produto }) {
   const { addToCart } = useCart();
   const [imgSelecionada, setImgSelecionada] = useState(1);
+  const [prazo, setPrazo] = useState(null);
+
+  useEffect(() => {
+    fetch('/api/estoque')
+      .then((r) => r.json())
+      .then((estoque) => {
+        const info = estoque[String(produto.id)];
+        if (info) setPrazo(info);
+      })
+      .catch(() => {});
+  }, [produto.id]);
 
   return (
     <main className="max-w-6xl mx-auto p-10 grid md:grid-cols-2 gap-12 text-tupaOffWhite font-sans">
@@ -49,6 +60,20 @@ export default function DetalheProdutoClient({ produto }) {
             <p><strong>Dimensões:</strong> {produto.dimensoes} cm</p>
           </div>
         </div>
+
+        {prazo && (
+          <div className={`mb-6 p-4 rounded border ${prazo.estoque > 0 ? 'border-tupaVerdeMusgo bg-tupaVerdeMusgo/10' : 'border-tupaWood bg-tupaGrey'}`}>
+            {prazo.estoque > 0 ? (
+              <p className="text-tupaVerdeMusgo font-bold text-sm">
+                ✓ Peça pré-fabricada disponível — pronto em até {prazo.prazoComEstoque} dias após a compra
+              </p>
+            ) : (
+              <p className="text-tupaSilver text-sm">
+                Sob encomenda — montagem do zero, prazo de até {prazo.prazoSobEncomenda} dias após a compra
+              </p>
+            )}
+          </div>
+        )}
 
         <button
           onClick={() => addToCart(produto)}

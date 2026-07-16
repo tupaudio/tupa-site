@@ -68,6 +68,7 @@ export async function POST(request) {
         enviarEmailOficina({ order, customer, payment }),
         enviarEmailCliente({ order, customer }),
         enviarWhatsAppOficina({ order, customer, payment }),
+        descontarEstoque(order.items),
       ]);
     }
 
@@ -113,4 +114,45 @@ async function enviarWhatsAppOficina({ order, customer, payment }) {
   await fetch(
     `https://api.callmebot.com/whatsapp.php?phone=${process.env.CALLMEBOT_PHONE}&text=${texto}&apikey=${process.env.CALLMEBOT_APIKEY}`
   );
+}
+
+async function descontarEstoque(itens) {
+  const token = process.env.AIRTABLE_TOKEN;
+  const baseId = process.env.AIRTABLE_BASE_ID;
+  const tabela = process.env.AIRTABLE_TABLE_NAME || 'Produtos';
+  if (!token || !baseId) return;
+
+  for (const item of itens) {
+    // O item "frete" (e qualquer item sem id) não tem produto no
+    // Airtable pra descontar — pula.
+    if (!item.id) continue;
+
+    try {
+      // 1) Encontra o registro do produto pelo ProdutoID
+      const busca = await fetch(
+        `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tabela)}?filterByFormula=${encodeURIComponent(`{ProdutoID}='${item.id}'`)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const resultado = await busca.json();
+      const registro = resultado.records?.[0];
+      if (!registro) continue; // produto não cadastrado no Airtable ainda
+
+      // 2) Calcula o novo estoque (nunca deixa ficar negativo)
+      const estoqueAtual = Number(registro.fields?.Estoque) || 0;
+      const novoEstoque = Math.max(0, estoqueAtual - (item.quantity || 1));
+
+      // 3) Atualiza o registro
+      await fetch(`https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tabela)}/${registro.id}`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ fields: { Estoque: novoEstoque } }),
+      });
+    } catch (erro) {
+      console.error(`Erro ao descontar estoque do produto ${item.id}:`, erro);
+      // Continua tentando os outros itens mesmo se um falhar
+    }
+  }
 }

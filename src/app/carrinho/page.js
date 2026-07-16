@@ -36,6 +36,7 @@ export default function CarrinhoPage() {
     setCarregando(true);
 
     const items = cart.map((item) => ({
+      id: item.id,
       nome: item.nome,
       preco: item.preco,
       quantidade: item.quantidade,

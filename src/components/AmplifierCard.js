@@ -5,6 +5,17 @@ import { useCart } from '@/context/CartContext';
 
 export default function AmplifierCard({ produto }) {
   const { addToCart } = useCart();
+  const [prazo, setPrazo] = useState(null);
+
+  useEffect(() => {
+    fetch('/api/estoque')
+      .then((r) => r.json())
+      .then((estoque) => {
+        const info = estoque[String(produto?.id)];
+        if (info) setPrazo(info);
+      })
+      .catch(() => {});
+  }, [produto?.id]);
 
   if (!produto) return null;
 
@@ -64,9 +75,23 @@ export default function AmplifierCard({ produto }) {
       <h3 className={`text-2xl font-serif mb-3 ${getCor()}`}>
         {nome}
       </h3>
-      <p className="text-tupaOffWhite text-sm mb-6 leading-relaxed flex-grow">
+      <p className="text-tupaOffWhite text-sm mb-3 leading-relaxed flex-grow">
         {descricao}
       </p>
+
+      {prazo && (
+        <p className="text-xs mb-4">
+          {prazo.estoque > 0 ? (
+            <span className="text-tupaVerdeMusgo font-bold">
+              ✓ Peça pré-fabricada — pronto em até {prazo.prazoComEstoque} dias
+            </span>
+          ) : (
+            <span className="text-tupaSilver">
+              Sob encomenda — prazo de até {prazo.prazoSobEncomenda} dias
+            </span>
+          )}
+        </p>
+      )}
       
       {/* Botões de Ação */}
       <div className="mt-auto space-y-3">

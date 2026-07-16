@@ -2,10 +2,17 @@ import { NextResponse } from 'next/server';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { randomUUID } from 'crypto';
 
-const client = new MercadoPagoConfig({ accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN });
-
 export async function POST(req) {
   try {
+    // Inicialização "preguiçosa": só cria a config quando a rota é
+    // chamada, não no carregamento do servidor. Assim, se a variável
+    // MERCADO_PAGO_ACCESS_TOKEN sumir por engano, só o checkout falha
+    // (com um erro claro) em vez de derrubar o servidor inteiro.
+    if (!process.env.MERCADO_PAGO_ACCESS_TOKEN) {
+      return NextResponse.json({ error: 'Pagamento não configurado no servidor.' }, { status: 500 });
+    }
+    const client = new MercadoPagoConfig({ accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN });
+
     const { items, cliente } = await req.json();
 
     // Nome e e-mail são obrigatórios — sem eles, não sabemos pra quem
@@ -19,11 +26,15 @@ export async function POST(req) {
 
     const preference = new Preference(client);
 
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+    // Sanitização: remove qualquer "/" no final da URL configurada,
+    // pra nunca gerar links tipo "https://site.com//sucesso" (barra
+    // dupla), que o Mercado Pago rejeita.
+    const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/+$/, '');
+
     // O Mercado Pago só aceita "approved" (ou omitir o campo).
     // Além disso, auto_return e notification_url exigem URL pública em
     // https — em localhost ele rejeita/ignora, então só ativamos quando
-    // a URL não for local (ex: já publicada na Vercel).
+    // a URL não for local (ex: já publicada na Netlify).
     const urlPublicaValida = baseUrl.startsWith('https://');
 
     // Identificador único deste pedido — o webhook usa isso pra saber
@@ -58,7 +69,7 @@ export async function POST(req) {
         cliente_endereco: cliente.endereco
           ? `${cliente.endereco.rua}, ${cliente.endereco.numero} ${cliente.endereco.complemento || ''} — ${cliente.endereco.bairro}, ${cliente.endereco.cidade}/${cliente.endereco.uf}`
           : '',
-        itens_json: JSON.stringify(items.map((i) => ({ title: i.nome, quantity: i.quantidade || 1 }))),
+        itens_json: JSON.stringify(items.map((i) => ({ id: i.id, title: i.nome, quantity: i.quantidade || 1 }))),
       },
     };
 
