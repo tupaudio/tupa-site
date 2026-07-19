@@ -123,9 +123,9 @@ export const produtos = [
     nome: "Produto de Teste - Integração MP",
     categoria: "Teste",
     tecnologia: "Digital",
-    preco: 0.02, // O valor do seu teste!
+    preco: 0.01, // O valor do seu teste!
     estoque: 10, // Muito importante ter estoque > 0 para o botão "Comprar" aparecer
-    peso: 1.0, // Necessário caso você já tenha cálculo de frete ativado
+    pesoKg: 1.0, // Necessário caso você já tenha cálculo de frete ativado
     dimensoes: "10x12x15",
     prazoComEstoque: 30, // dias se usar peça pré-fabricada
     prazoSobEncomenda: 60, // dias se for do zero

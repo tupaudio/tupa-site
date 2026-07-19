@@ -29,7 +29,7 @@ export async function POST(req) {
     // Sanitização: remove qualquer "/" no final da URL configurada,
     // pra nunca gerar links tipo "https://site.com//sucesso" (barra
     // dupla), que o Mercado Pago rejeita.
-    const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/+$/, '');
+    const baseUrl = (process.env.SITE_URL || 'http://localhost:3000').replace(/\/+$/, '');
 
     // O Mercado Pago só aceita "approved" (ou omitir o campo).
     // Além disso, auto_return e notification_url exigem URL pública em

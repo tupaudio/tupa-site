@@ -20,9 +20,14 @@ import WorkshopNotification from '@/emails/WorkshopNotification';
 //   CALLMEBOT_APIKEY          → chave gerada pelo CallMeBot
 // =========================================================
 
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-
 export async function POST(request) {
+  // Inicialização "preguiçosa": criar o cliente Resend aqui dentro,
+  // não no topo do arquivo. No Cloudflare Workers, variáveis de
+  // ambiente lidas fora de uma função de requisição podem não estar
+  // prontas ainda — e como todas as rotas ficam num único Worker,
+  // um erro na inicialização de QUALQUER módulo derruba o site inteiro.
+  const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+
   console.log('[webhook mercadopago] recebido');
   try {
     const params = request.nextUrl.searchParams;
@@ -71,8 +76,8 @@ export async function POST(request) {
       const payment = { id: pagamento.id, status: pagamento.status, payment_method_id: pagamento.payment_method_id };
 
       const resultados = await Promise.allSettled([
-        enviarEmailOficina({ order, customer, payment }),
-        enviarEmailCliente({ order, customer }),
+        enviarEmailOficina({ order, customer, payment, resend }),
+        enviarEmailCliente({ order, customer, resend }),
         enviarWhatsAppOficina({ order, customer, payment }),
         descontarEstoque(order.items),
       ]);
@@ -96,7 +101,7 @@ export async function POST(request) {
   }
 }
 
-async function enviarEmailOficina({ order, customer, payment }) {
+async function enviarEmailOficina({ order, customer, payment, resend }) {
   if (!resend || !process.env.EMAIL_OFICINA) { console.warn('[webhook mercadopago] email-oficina pulado: RESEND_API_KEY ou EMAIL_OFICINA ausente'); return; }
 
   await resend.emails.send({
@@ -107,7 +112,7 @@ async function enviarEmailOficina({ order, customer, payment }) {
   });
 }
 
-async function enviarEmailCliente({ order, customer }) {
+async function enviarEmailCliente({ order, customer, resend }) {
   if (!resend || !customer.email) { console.warn('[webhook mercadopago] email-cliente pulado: RESEND_API_KEY ou e-mail do cliente ausente'); return; }
 
   await resend.emails.send({

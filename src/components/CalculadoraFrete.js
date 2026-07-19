@@ -59,6 +59,14 @@ export default function CalculadoraFrete({ itens, onSelecionar }) {
     setCep(value.substring(0, 9));
   };
 
+  const opcaoLocal = { nome: 'Frete local — combinamos direto com você', valor: 0 };
+
+  const selecionarLocal = () => {
+    setSelecionada('local');
+    setOpcoes(null);
+    if (onSelecionar) onSelecionar(opcaoLocal);
+  };
+
   const selecionarOpcao = (idx) => {
     setSelecionada(idx);
     if (onSelecionar) onSelecionar(opcoes[idx]);
@@ -75,6 +83,19 @@ export default function CalculadoraFrete({ itens, onSelecionar }) {
         </svg>
         Calcular Frete e Prazos
       </h4>
+
+      {/* Opção fixa: retirada/entrega combinada localmente, sem precisar de CEP */}
+      <button
+        type="button"
+        onClick={selecionarLocal}
+        className={`w-full flex justify-between items-center bg-[#1a1a1a] p-3 rounded border transition-colors text-left mb-4 ${selecionada === 'local' ? 'border-tupaGold' : 'border-tupaWood/20 hover:border-tupaGold/50'}`}
+      >
+        <div>
+          <p className="font-bold text-tupaOffWhite text-sm">{opcaoLocal.nome}</p>
+          <p className="text-tupaSilver text-xs mt-1">Combinamos o valor e a forma de entrega/retirada depois da compra</p>
+        </div>
+        <p className="text-tupaGold font-bold">Grátis</p>
+      </button>
 
       <form onSubmit={handleCalcular} className="flex flex-wrap gap-2">
         <input

@@ -22,10 +22,61 @@ export default function CarrinhoPage() {
   const [email, setEmail] = useState('');
   const [doc, setDoc] = useState('');
   const [telefone, setTelefone] = useState('');
-  const [endereco, setEndereco] = useState({ rua: '', numero: '', complemento: '', bairro: '', cidade: '', uf: '' });
+  const [endereco, setEndereco] = useState({ cep: '', rua: '', numero: '', complemento: '', bairro: '', cidade: '', uf: '' });
   const [frete, setFrete] = useState(null);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
+  const [buscandoCep, setBuscandoCep] = useState(false);
+
+  const buscarEnderecoPorCep = async (cepDigitado) => {
+    const cepLimpo = cepDigitado.replace(/\D/g, '');
+    if (cepLimpo.length !== 8) return;
+
+    setBuscandoCep(true);
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+      const data = await res.json();
+      if (!data.erro) {
+        setEndereco((prev) => ({
+          ...prev,
+          rua: data.logradouro || prev.rua,
+          bairro: data.bairro || prev.bairro,
+          cidade: data.localidade || prev.cidade,
+          uf: data.uf || prev.uf,
+        }));
+      }
+    } catch {
+      // Se a busca falhar, o cliente preenche na mão mesmo — sem problema
+    } finally {
+      setBuscandoCep(false);
+    }
+  };
+  const [buscandoCep, setBuscandoCep] = useState(false);
+
+  const buscarEnderecoPorCep = async (cepDigitado) => {
+    const cepLimpo = cepDigitado.replace(/\D/g, '');
+    if (cepLimpo.length !== 8) return;
+
+    setBuscandoCep(true);
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+      const data = await res.json();
+
+      if (!data.erro) {
+        setEndereco((prev) => ({
+          ...prev,
+          rua: data.logradouro || prev.rua,
+          bairro: data.bairro || prev.bairro,
+          cidade: data.localidade || prev.cidade,
+          uf: data.uf || prev.uf,
+        }));
+      }
+    } catch {
+      // Se o serviço falhar, o cliente ainda pode preencher tudo na mão
+    } finally {
+      setBuscandoCep(false);
+    }
+  };
 
   const subtotal = cart.reduce((soma, item) => soma + Number(item.preco) * item.quantidade, 0);
   const total = subtotal + (frete ? frete.valor : 0);
@@ -40,8 +91,9 @@ export default function CarrinhoPage() {
     if (!nome.trim()) return 'Preencha seu nome completo.';
     if (!email.trim()) return 'Preencha seu e-mail.';
     if (!email.includes('@') || !email.includes('.')) return 'Digite um e-mail válido.';
-    if (!endereco.rua.trim() || !endereco.numero.trim() || !endereco.cidade.trim() || !endereco.uf.trim()) {
-      return 'Preencha o endereço de entrega completo (rua, número, cidade e UF).';
+    if (!doc.trim()) return 'Preencha o CPF ou CNPJ (necessário para a nota fiscal).';
+    if (!endereco.cep.trim() || !endereco.rua.trim() || !endereco.numero.trim() || !endereco.cidade.trim() || !endereco.uf.trim()) {
+      return 'Preencha o endereço de entrega completo (CEP, rua, número, cidade e UF).';
     }
     return null;
   };
@@ -200,8 +252,9 @@ export default function CarrinhoPage() {
             className={campoClasse}
           />
           <input
+            required
             type="text"
-            placeholder="CPF / CNPJ (para nota fiscal)"
+            placeholder="CPF / CNPJ (para nota fiscal) *"
             value={doc}
             onChange={(e) => setDoc(e.target.value)}
             className={campoClasse}
@@ -217,6 +270,20 @@ export default function CarrinhoPage() {
 
         <p className="text-tupaGold text-xs uppercase tracking-widest pt-2">Endereço de entrega *</p>
         <div className="grid sm:grid-cols-3 gap-4">
+          <input
+            required
+            type="text"
+            placeholder={buscandoCep ? 'Buscando endereço...' : 'CEP *'}
+            maxLength={9}
+            value={endereco.cep}
+            onChange={(e) => {
+              let v = e.target.value.replace(/\D/g, '').slice(0, 8);
+              if (v.length > 5) v = v.slice(0, 5) + '-' + v.slice(5);
+              setEndereco({ ...endereco, cep: v });
+              if (v.replace(/\D/g, '').length === 8) buscarEnderecoPorCep(v);
+            }}
+            className={campoClasse}
+          />
           <input
             required
             type="text"
