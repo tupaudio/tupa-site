@@ -1,13 +1,7 @@
+// src/app/api/status-pagamento/route.js
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
-
-// =========================================================
-// TUPÃ ÁUDIO — Consulta de status de pagamento
-// Usada pela página /pendente pra checar, a cada poucos segundos,
-// se o Pix já foi aprovado — sem precisar do cliente atualizar a
-// página ou depender só do e-mail.
-// =========================================================
 
 export async function GET(request) {
   const paymentId = request.nextUrl.searchParams.get('payment_id');
@@ -18,16 +12,31 @@ export async function GET(request) {
 
   try {
     const resposta = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
-      headers: { Authorization: `Bearer ${process.env.MERCADO_PAGO_ACCESS_TOKEN}` },
+      headers: { 
+        Authorization: `Bearer ${process.env.MERCADO_PAGO_ACCESS_TOKEN}` 
+      },
     });
-    const pagamento = await resposta.json();
 
     if (!resposta.ok) {
-      return NextResponse.json({ status: 'desconhecido' });
+      console.error(`Erro ao consultar pagamento ${paymentId}:`, resposta.status);
+      return NextResponse.json({ 
+        status: 'unknown', 
+        error: 'Erro ao consultar pagamento' 
+      }, { status: 200 }); // Retorna 200 para não quebrar o cliente
     }
 
-    return NextResponse.json({ status: pagamento.status });
+    const pagamento = await resposta.json();
+    
+    return NextResponse.json({ 
+      status: pagamento.status,
+      status_detail: pagamento.status_detail,
+      payment_id: pagamento.id
+    });
   } catch (erro) {
-    return NextResponse.json({ status: 'desconhecido' });
+    console.error('Erro na API status-pagamento:', erro);
+    return NextResponse.json({ 
+      status: 'unknown', 
+      error: 'Erro interno' 
+    }, { status: 200 });
   }
 }
