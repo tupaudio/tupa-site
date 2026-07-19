@@ -26,9 +26,9 @@ export default function CarrinhoPage() {
   const [frete, setFrete] = useState(null);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
-  const [buscandoCep, setBuscandoCep] = useState(false);
+  const [buscandoCep, setBuscandoCep] = useState(false); // <-- MANTENHA ESTA
 
-  const buscarEnderecoPorCep = async (cepDigitado) => {
+  const buscarEnderecoPorCep = async (cepDigitado) => { // <-- MANTENHA ESTA
     const cepLimpo = cepDigitado.replace(/\D/g, '');
     if (cepLimpo.length !== 8) return;
 
@@ -51,32 +51,12 @@ export default function CarrinhoPage() {
       setBuscandoCep(false);
     }
   };
-  const [buscandoCep, setBuscandoCep] = useState(false);
 
-  const buscarEnderecoPorCep = async (cepDigitado) => {
-    const cepLimpo = cepDigitado.replace(/\D/g, '');
-    if (cepLimpo.length !== 8) return;
-
-    setBuscandoCep(true);
-    try {
-      const res = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
-      const data = await res.json();
-
-      if (!data.erro) {
-        setEndereco((prev) => ({
-          ...prev,
-          rua: data.logradouro || prev.rua,
-          bairro: data.bairro || prev.bairro,
-          cidade: data.localidade || prev.cidade,
-          uf: data.uf || prev.uf,
-        }));
-      }
-    } catch {
-      // Se o serviço falhar, o cliente ainda pode preencher tudo na mão
-    } finally {
-      setBuscandoCep(false);
-    }
-  };
+  // REMOVA COMPLETAMENTE ESTE BLOCO DUPLICADO (linhas 49-68 do seu código original)
+  // const [buscandoCep, setBuscandoCep] = useState(false); <-- REMOVER
+  // const buscarEnderecoPorCep = async (cepDigitado) => { <-- REMOVER
+  //   ... 
+  // };
 
   const subtotal = cart.reduce((soma, item) => soma + Number(item.preco) * item.quantidade, 0);
   const total = subtotal + (frete ? frete.valor : 0);
@@ -84,9 +64,6 @@ export default function CarrinhoPage() {
   const formatarPreco = (valor) =>
     valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  // Validação centralizada: todo campo marcado com * passa por aqui.
-  // É chamada tanto pelo clique no botão quanto pelo onSubmit do form
-  // (que o navegador dispara também no Enter) — cobre os dois casos.
   const validar = () => {
     if (!nome.trim()) return 'Preencha seu nome completo.';
     if (!email.trim()) return 'Preencha seu e-mail.';
@@ -229,7 +206,7 @@ export default function CarrinhoPage() {
         <CalculadoraFrete itens={cart} onSelecionar={setFrete} />
       </div>
 
-      {/* Caixa 3: dados do cliente e pagamento — embaixo de tudo, como pedido */}
+      {/* Caixa 3: dados do cliente e pagamento */}
       <form onSubmit={finalizarCompra} className="bg-tupaGrey border border-tupaWood rounded-lg p-6 space-y-4">
         <h2 className="text-tupaGold font-serif text-xl mb-2">Seus dados</h2>
         <p className="text-tupaSilver text-xs">Campos com * são obrigatórios.</p>
