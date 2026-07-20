@@ -1,6 +1,6 @@
 // src/app/carrinho/page.js
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
 import CalculadoraFrete from '@/components/CalculadoraFrete';
@@ -73,6 +73,33 @@ export default function CarrinhoPage() {
   const [erro, setErro] = useState('');
   const [buscandoCep, setBuscandoCep] = useState(false);
   const [termos, setTermos] = useState(false);
+
+  // Estados para monitoramento assíncrono do checkout externo
+  const [checkoutIniciado, setCheckoutIniciado] = useState(false);
+  const [linkPagamento, setLinkPagamento] = useState('');
+  const [extRef, setExtRef] = useState('');
+
+  // Efeito de pooling de segundo plano para verificar status via external_reference
+  useEffect(() => {
+    if (!checkoutIniciado || !extRef) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/status-pagamento?external_reference=${extRef}`);
+        const data = await res.json();
+
+        if (data.status === 'approved') {
+          clearInterval(interval);
+          clearCart(); 
+          window.location.href = '/sucesso'; 
+        }
+      } catch (err) {
+        console.error("Erro ao verificar o status de pagamento:", err);
+      }
+    }, 4000); // Executa a checagem a cada 4 segundos
+
+    return () => clearInterval(interval);
+  }, [checkoutIniciado, extRef, clearCart]);
 
   const buscarEnderecoPorCep = async (cepDigitado) => {
     const cepLimpo = cepDigitado.replace(/\D/g, '');
@@ -180,9 +207,13 @@ export default function CarrinhoPage() {
         return;
       }
 
-      // Limpa o carrinho antes de redirecionar
-      clearCart();
-      window.location.href = data.init_point;
+      setLinkPagamento(data.init_point);
+      setExtRef(data.external_reference);
+      setCheckoutIniciado(true);
+      setCarregando(false);
+
+      // Abre o Mercado Pago em aba paralela externa para o fluxo do Pix/Cartão
+      window.open(data.init_point, '_blank');
     } catch (err) {
       setErro('Erro ao conectar com o pagamento. Tente novamente.');
       setCarregando(false);
@@ -401,76 +432,103 @@ export default function CarrinhoPage() {
       {/* PASSO 3: Pagamento e Revisão Final */}
       {passo === 3 && (
         <div className="space-y-4">
-          {/* Revisão do pedido */}
-          <div className="bg-tupaGrey border border-tupaWood rounded-lg p-6 space-y-4">
-            <h2 className="text-tupaGold font-serif text-xl">Revisão do pedido</h2>
+          {checkoutIniciado ? (
+            <div className="bg-tupaGrey border border-tupaWood rounded-lg p-8 text-center space-y-6">
+              <h2 className="text-tupaGold font-serif text-2xl tracking-wide animate-pulse">
+                Aguardando Pagamento...
+              </h2>
+              <p className="text-tupaSilver text-sm max-w-md mx-auto">
+                Uma aba externa e segura do Mercado Pago foi inicializada para você efetuar a transação via Pix ou Cartão.
+                Assim que processado com sucesso, esta janela redirecionará você automaticamente.
+              </p>
+              
+              <div className="py-4">
+                <div className="w-8 h-8 border-4 border-tupaGold border-t-transparent rounded-full animate-spin mx-auto"></div>
+              </div>
 
-            {/* Itens */}
-            <div className="space-y-3">
-              {cart.map((item) => (
-                <div key={item.id} className="flex items-center gap-4 border-b border-tupaWood/30 pb-3 last:border-0 last:pb-0">
-                  <OtimizadaImagem
-                    src={`/img/${item.pastaImagens}/1.png`}
-                    alt={item.nome}
-                    width={50}
-                    height={50}
-                    className="rounded border border-tupaWood/50 object-cover"
-                    sizes="50px"
-                  />
-                  <div className="flex-1">
-                    <p className="text-sm text-tupaOffWhite">{item.nome}</p>
-                    <p className="text-xs text-tupaSilver">{item.quantidade}x {formatarPreco(item.preco)}</p>
+              <div className="pt-4 border-t border-tupaWood/20 space-y-2">
+                <p className="text-xs text-tupaSilver/60">A janela popup bloqueou ou fechou sem querer?</p>
+                <a 
+                  href={linkPagamento} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-block bg-tupaGold text-tupaBlack px-6 py-2 rounded font-bold text-sm uppercase hover:bg-white transition-colors"
+                >
+                  Abrir ambiente de pagamento novamente
+                </a>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-tupaGrey border border-tupaWood rounded-lg p-6 space-y-4">
+              <h2 className="text-tupaGold font-serif text-xl">Revisão do pedido</h2>
+
+              {/* Itens */}
+              <div className="space-y-3">
+                {cart.map((item) => (
+                  <div key={item.id} className="flex items-center gap-4 border-b border-tupaWood/30 pb-3 last:border-0 last:pb-0">
+                    <OtimizadaImagem
+                      src={`/img/${item.pastaImagens}/1.png`}
+                      alt={item.nome}
+                      width={50}
+                      height={50}
+                      className="rounded border border-tupaWood/50 object-cover"
+                      sizes="50px"
+                    />
+                    <div className="flex-1">
+                      <p className="text-sm text-tupaOffWhite">{item.nome}</p>
+                      <p className="text-xs text-tupaSilver">{item.quantidade}x {formatarPreco(item.preco)}</p>
+                    </div>
+                    <p className="text-sm text-tupaGold font-bold">{formatarPreco(Number(item.preco) * item.quantidade)}</p>
                   </div>
-                  <p className="text-sm text-tupaGold font-bold">{formatarPreco(Number(item.preco) * item.quantidade)}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Totais */}
-            <div className="border-t border-tupaWood/30 pt-4 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-tupaSilver">Subtotal</span>
-                <span className="text-tupaOffWhite">{formatarPreco(subtotal)}</span>
+                ))}
               </div>
-              {frete && (
+
+              {/* Totais */}
+              <div className="border-t border-tupaWood/30 pt-4 space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-tupaSilver">Frete</span>
-                  <span className="text-tupaOffWhite">{formatarPreco(frete.valor)}</span>
+                  <span className="text-tupaSilver">Subtotal</span>
+                  <span className="text-tupaOffWhite">{formatarPreco(subtotal)}</span>
                 </div>
-              )}
-              <div className="flex justify-between font-bold text-tupaGold text-lg border-t border-tupaWood/30 pt-3">
-                <span>Total</span>
-                <span>{formatarPreco(total)}</span>
+                {frete && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-tupaSilver">Frete</span>
+                    <span className="text-tupaOffWhite">{formatarPreco(frete.valor)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-bold text-tupaGold text-lg border-t border-tupaWood/30 pt-3">
+                  <span>Total</span>
+                  <span>{formatarPreco(total)}</span>
+                </div>
+              </div>
+
+              {/* Dados do cliente */}
+              <div className="bg-tupaBlack p-4 rounded border border-tupaWood/30 text-sm">
+                <p className="text-tupaSilver"><span className="text-tupaGold">Nome:</span> {nome}</p>
+                <p className="text-tupaSilver"><span className="text-tupaGold">E-mail:</span> {email}</p>
+                <p className="text-tupaSilver"><span className="text-tupaGold">Entrega:</span> {endereco.rua}, {endereco.numero} {endereco.complemento ? `- ${endereco.complemento}` : ''}, {endereco.bairro} - {endereco.cidade}/{endereco.uf}, CEP: {endereco.cep}</p>
+              </div>
+
+              {erro && <p className="text-red-400 text-sm font-bold">{erro}</p>}
+
+              <div className="flex gap-4">
+                <button
+                  type="button"
+                  onClick={() => irParaPasso(2)}
+                  className="flex-1 bg-tupaGrey border border-tupaWood text-tupaOffWhite py-3 rounded font-bold hover:border-tupaGold transition-colors"
+                >
+                  Voltar
+                </button>
+                <button
+                  type="submit"
+                  onClick={finalizarCompra}
+                  disabled={carregando}
+                  className="flex-1 bg-tupaGold text-tupaBlack py-3 rounded font-bold uppercase tracking-widest hover:bg-white transition-colors disabled:opacity-50"
+                >
+                  {carregando ? 'Processando...' : 'Finalizar Compra'}
+                </button>
               </div>
             </div>
-
-            {/* Dados do cliente */}
-            <div className="bg-tupaBlack p-4 rounded border border-tupaWood/30 text-sm">
-              <p className="text-tupaSilver"><span className="text-tupaGold">Nome:</span> {nome}</p>
-              <p className="text-tupaSilver"><span className="text-tupaGold">E-mail:</span> {email}</p>
-              <p className="text-tupaSilver"><span className="text-tupaGold">Entrega:</span> {endereco.rua}, {endereco.numero} {endereco.complemento ? `- ${endereco.complemento}` : ''}, {endereco.bairro} - {endereco.cidade}/{endereco.uf}, CEP: {endereco.cep}</p>
-            </div>
-
-            {erro && <p className="text-red-400 text-sm font-bold">{erro}</p>}
-
-            <div className="flex gap-4">
-              <button
-                type="button"
-                onClick={() => irParaPasso(2)}
-                className="flex-1 bg-tupaGrey border border-tupaWood text-tupaOffWhite py-3 rounded font-bold hover:border-tupaGold transition-colors"
-              >
-                Voltar
-              </button>
-              <button
-                type="submit"
-                onClick={finalizarCompra}
-                disabled={carregando}
-                className="flex-1 bg-tupaGold text-tupaBlack py-3 rounded font-bold uppercase tracking-widest hover:bg-white transition-colors disabled:opacity-50"
-              >
-                {carregando ? 'Processando...' : 'Finalizar Compra'}
-              </button>
-            </div>
-          </div>
+          )}
         </div>
       )}
     </main>

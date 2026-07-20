@@ -80,4 +80,9 @@ export async function POST(req) {
     const errorMessage = error.response?.data?.message || error.message || 'Erro interno ao processar pagamento.';
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
+    const result = await preference.create({ body: corpo });
+    return NextResponse.json({ 
+    init_point: result.init_point,
+    external_reference: externalReference // Adicione isso aqui
+});
 }

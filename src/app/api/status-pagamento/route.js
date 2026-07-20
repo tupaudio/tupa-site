@@ -4,39 +4,44 @@ import { NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 
 export async function GET(request) {
-  const paymentId = request.nextUrl.searchParams.get('payment_id');
-
-  if (!paymentId) {
-    return NextResponse.json({ error: 'payment_id é obrigatório' }, { status: 400 });
-  }
+  const { searchParams } = request.nextUrl;
+  const paymentId = searchParams.get('payment_id');
+  const externalReference = searchParams.get('external_reference');
 
   try {
-    const resposta = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
-      headers: { 
-        Authorization: `Bearer ${process.env.MERCADO_PAGO_ACCESS_TOKEN}` 
-      },
-    });
-
-    if (!resposta.ok) {
-      console.error(`Erro ao consultar pagamento ${paymentId}:`, resposta.status);
-      return NextResponse.json({ 
-        status: 'unknown', 
-        error: 'Erro ao consultar pagamento' 
-      }, { status: 200 }); // Retorna 200 para não quebrar o cliente
+    // Se já tivermos o paymentId, consulta direta (mais rápido)
+    if (paymentId) {
+      const resposta = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+        headers: { Authorization: `Bearer ${process.env.MERCADO_PAGO_ACCESS_TOKEN}` },
+      });
+      if (resposta.ok) {
+        const pagamento = await resposta.json();
+        return NextResponse.json({ status: pagamento.status });
+      }
     }
 
-    const pagamento = await resposta.json();
-    
-    return NextResponse.json({ 
-      status: pagamento.status,
-      status_detail: pagamento.status_detail,
-      payment_id: pagamento.id
-    });
+    // Se não tiver o paymentId, busca pelo external_reference
+    if (externalReference) {
+      const resposta = await fetch(`https://api.mercadopago.com/v1/payments/search?external_reference=${externalReference}`, {
+        headers: { Authorization: `Bearer ${process.env.MERCADO_PAGO_ACCESS_TOKEN}` },
+      });
+
+      if (resposta.ok) {
+        const busca = await resposta.json();
+        // Pega o pagamento mais recente com essa referência
+        if (busca.results && busca.results.length > 0) {
+          const ultimoPagamento = busca.results[0];
+          return NextResponse.json({ 
+            status: ultimoPagamento.status,
+            payment_id: ultimoPagamento.id 
+          });
+        }
+      }
+    }
+
+    return NextResponse.json({ status: 'pending' }); // Fallback se não encontrar nada ainda
   } catch (erro) {
     console.error('Erro na API status-pagamento:', erro);
-    return NextResponse.json({ 
-      status: 'unknown', 
-      error: 'Erro interno' 
-    }, { status: 200 });
+    return NextResponse.json({ status: 'pending', error: 'Erro interno' });
   }
 }
