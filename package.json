@@ -7,13 +7,12 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "cf:build": "npx @opennextjs/cloudflare build",
-    "cf:deploy": "npx wrangler deploy",
-    "deploy": "npm run build && npm run cf:build && npm run cf:deploy",
+    "cf:build": "opennextjs-cloudflare build --env production",
+    "cf:deploy": "wrangler deploy --env production",
+    "deploy": "npm run cf:build && npm run cf:deploy",
     "optimize:images": "node scripts/optimize-images.js",
     "build:optimized": "npm run optimize:images && npm run build"
   },
-
   "dependencies": {
     "@react-email/components": "^1.0.12",
     "@react-email/render": "^2.1.0",
@@ -26,13 +25,14 @@
   },
   "devDependencies": {
     "@netlify/plugin-nextjs": "^5",
-    "@opennextjs/cloudflare": "^0.6.0",
+    "@opennextjs/cloudflare": "^1.20.1",
     "@tailwindcss/postcss": "^4",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
+    "rclone.js": "^0.6.6",
     "sharp": "^0.35.3",
     "tailwindcss": "^4",
-    "wrangler": "^4.0.0"
+    "wrangler": "^4.112.0"
   },
   "allowScripts": {
     "sharp@0.34.5": true,
