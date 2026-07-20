@@ -50,7 +50,7 @@ export async function POST(req) {
       // Se não for CPF nem CNPJ, não envia identificação
     }
 
-    // 4. Montagem do Corpo da Preferência (CORRIGIDO)
+    // 4. Montagem do Corpo da Preferência
     const corpo = {
       items: items.map(item => ({
         title: item.nome.substring(0, 256),
@@ -64,12 +64,13 @@ export async function POST(req) {
         ...(identification && { identification }),
       },
       back_urls: {
-        success: `${baseUrl}/sucesso`,
+        // ✅ CORRIGIDO: Inclui external_reference na URL de sucesso
+        success: `${baseUrl}/sucesso?external_reference=${externalReference}`,
         failure: `${baseUrl}/falha`,
         pending: `${baseUrl}/pendente`,
       },
       auto_return: 'approved',
-      external_reference: externalReference, // ✅ CORRIGIDO: agora incluído
+      external_reference: externalReference,
       notification_url: `${baseUrl}/api/webhooks/mercadopago`,
       metadata: {
         cliente_nome: cliente.nome.trim().substring(0, 100),
@@ -78,7 +79,7 @@ export async function POST(req) {
         cliente_endereco: cliente.endereco
           ? `${cliente.endereco.rua}, ${cliente.endereco.numero} ${cliente.endereco.complemento || ''} — ${cliente.endereco.bairro}, ${cliente.endereco.cidade}/${cliente.endereco.uf}`.substring(0, 200)
           : '',
-        // ✅ CORRIGIDO: Limita a quantidade de itens para não estourar o limite
+        // Limita a quantidade de itens para não estourar o limite do MP (500 caracteres)
         itens_json: JSON.stringify(items.slice(0, 5).map((i) => ({ 
           id: i.id, 
           title: i.nome.substring(0, 50), 
@@ -89,6 +90,7 @@ export async function POST(req) {
 
     // 5. Criação da Preferência e Resposta
     const result = await preference.create({ body: corpo });
+    
     return NextResponse.json({
       init_point: result.init_point,
       external_reference: externalReference,

@@ -205,20 +205,84 @@ async function enviarEmailCliente({ order, customer, resend }) {
   });
 }
 
+// app/api/webhooks/mercadopago/route.jsx
+
+// Substitua a função enviarWhatsAppOficina por esta versão corrigida:
+
 async function enviarWhatsAppOficina({ order, customer, payment }) {
-  if (!process.env.CALLMEBOT_PHONE || !process.env.CALLMEBOT_APIKEY) {
-    console.warn('[webhook mercadopago] whatsapp pulado: CALLMEBOT_PHONE ou CALLMEBOT_APIKEY ausente');
+  // ✅ VERIFICAÇÃO MELHORADA
+  const phone = process.env.CALLMEBOT_PHONE;
+  const apiKey = process.env.CALLMEBOT_APIKEY;
+  
+  if (!phone) {
+    console.warn('[webhook] CALLMEBOT_PHONE não configurado');
+    return;
+  }
+  
+  if (!apiKey) {
+    console.warn('[webhook] CALLMEBOT_APIKEY não configurado');
     return;
   }
 
-  const listaItens = order.items.map((i) => `${i.quantity}x ${i.title}`).join(', ');
-  const texto = encodeURIComponent(
-    `🔨 Novo pedido pago!\nCliente: ${customer.name}\nTel: ${customer.telefone || 'não informado'}\nEndereço: ${customer.endereco || 'não informado'}\nItens: ${listaItens}\nTotal: R$ ${Number(order.amount).toFixed(2)}\nID MP: ${payment.id}`
-  );
+  // ✅ LIMPA E FORMATA O NÚMERO CORRETAMENTE
+  // Remove tudo que não é número
+  const phoneClean = phone.replace(/\D/g, '');
+  
+  // Garante que tem DDI (55 para Brasil)
+  let phoneFormatted = phoneClean;
+  if (!phoneFormatted.startsWith('55')) {
+    phoneFormatted = '55' + phoneFormatted;
+  }
+  
+  // Remove o 9 extra se houver (para números fixos)
+  // Mantém o 9 para celulares
+  console.log(`[webhook] Número formatado para WhatsApp: ${phoneFormatted}`);
 
-  await fetch(
-    `https://api.callmebot.com/whatsapp.php?phone=${process.env.CALLMEBOT_PHONE}&text=${texto}&apikey=${process.env.CALLMEBOT_APIKEY}`
-  );
+  // ✅ CONSTRÓI A MENSAGEM
+  const listaItens = order.items.map((i) => `${i.quantity}x ${i.title}`).join('\n• ');
+  const total = Number(order.amount).toFixed(2);
+  
+  const mensagem = 
+`🔨 NOVO PEDIDO PAGO!
+
+👤 Cliente: ${customer.name}
+📧 E-mail: ${customer.email || 'não informado'}
+📱 Telefone: ${customer.telefone || 'não informado'}
+
+📦 Itens:
+• ${listaItens}
+
+💰 Total: R$ ${total}
+
+📦 Endereço: ${customer.endereco || 'não informado'}
+
+🆔 ID do pedido: ${order.id}
+🆔 ID do pagamento: ${payment.id}
+
+🔗 Ver no sistema: ${process.env.SITE_URL}/admin/pedidos/${order.id}`;
+
+  // ✅ CODIFICA A MENSAGEM PARA URL
+  const textoEncoded = encodeURIComponent(mensagem);
+
+  // ✅ URL CORRETA DO CALLMEBOT
+  const url = `https://api.callmebot.com/whatsapp.php?phone=${phoneFormatted}&text=${textoEncoded}&apikey=${apiKey}`;
+  
+  console.log(`[webhook] Enviando WhatsApp para ${phoneFormatted}...`);
+
+  try {
+    const response = await fetch(url);
+    const result = await response.text();
+    
+    console.log(`[webhook] Resposta do CallMeBot:`, result);
+    
+    if (response.ok) {
+      console.log('[webhook] ✅ WhatsApp enviado com sucesso!');
+    } else {
+      console.error('[webhook] ❌ Erro no CallMeBot:', result);
+    }
+  } catch (error) {
+    console.error('[webhook] ❌ Falha ao enviar WhatsApp:', error.message);
+  }
 }
 
 async function descontarEstoque(itens) {
