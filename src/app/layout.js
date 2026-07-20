@@ -1,6 +1,8 @@
 // src/app/layout.js
 import './globals.css';
 import { CartProvider } from '@/context/CartContext';
+import Header from '@/components/Header';  // <-- IMPORT DO HEADER
+import Footer from '@/components/Footer';  // <-- IMPORT DO FOOTER
 
 export const metadata = {
   metadataBase: new URL(process.env.SITE_URL || 'https://www.tupaaudio.com.br'),
