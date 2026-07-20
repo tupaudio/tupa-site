@@ -32,7 +32,25 @@ export async function POST(req) {
     const baseUrl = (process.env.SITE_URL || 'http://localhost:3000').replace(/\/+$/, '');
     const externalReference = randomUUID();
 
-    // 3. Montagem do Corpo da Preferência
+    // 3. Validação e sanitização do documento
+    let identification = null;
+    if (cliente.doc) {
+      const docNumbers = cliente.doc.replace(/\D/g, '');
+      if (docNumbers.length === 11) {
+        identification = {
+          type: 'CPF',
+          number: docNumbers,
+        };
+      } else if (docNumbers.length === 14) {
+        identification = {
+          type: 'CNPJ',
+          number: docNumbers,
+        };
+      }
+      // Se não for CPF nem CNPJ, não envia identificação
+    }
+
+    // 4. Montagem do Corpo da Preferência (CORRIGIDO)
     const corpo = {
       items: items.map(item => ({
         title: item.nome.substring(0, 256),
@@ -43,12 +61,7 @@ export async function POST(req) {
       payer: {
         name: cliente.nome.trim().substring(0, 256),
         email: cliente.email.trim().substring(0, 256),
-        ...(cliente.doc && {
-          identification: {
-            type: cliente.doc.replace(/\D/g, '').length > 11 ? 'CNPJ' : 'CPF',
-            number: cliente.doc.replace(/\D/g, ''),
-          }
-        }),
+        ...(identification && { identification }),
       },
       back_urls: {
         success: `${baseUrl}/sucesso`,
@@ -56,20 +69,25 @@ export async function POST(req) {
         pending: `${baseUrl}/pendente`,
       },
       auto_return: 'approved',
-      external_reference: externalReference,
+      external_reference: externalReference, // ✅ CORRIGIDO: agora incluído
       notification_url: `${baseUrl}/api/webhooks/mercadopago`,
       metadata: {
-        cliente_nome: cliente.nome.trim(),
-        cliente_email: cliente.email.trim(),
-        cliente_telefone: cliente.telefone || '',
+        cliente_nome: cliente.nome.trim().substring(0, 100),
+        cliente_email: cliente.email.trim().substring(0, 100),
+        cliente_telefone: (cliente.telefone || '').substring(0, 20),
         cliente_endereco: cliente.endereco
-          ? `${cliente.endereco.rua}, ${cliente.endereco.numero} ${cliente.endereco.complemento || ''} — ${cliente.endereco.bairro}, ${cliente.endereco.cidade}/${cliente.endereco.uf}`
+          ? `${cliente.endereco.rua}, ${cliente.endereco.numero} ${cliente.endereco.complemento || ''} — ${cliente.endereco.bairro}, ${cliente.endereco.cidade}/${cliente.endereco.uf}`.substring(0, 200)
           : '',
-        itens_json: JSON.stringify(items.map((i) => ({ id: i.id, title: i.nome, quantity: i.quantidade || 1 }))),
+        // ✅ CORRIGIDO: Limita a quantidade de itens para não estourar o limite
+        itens_json: JSON.stringify(items.slice(0, 5).map((i) => ({ 
+          id: i.id, 
+          title: i.nome.substring(0, 50), 
+          quantity: i.quantidade || 1 
+        }))),
       },
     };
 
-    // 4. Criação da Preferência e Resposta (agora com external_reference incluído de verdade)
+    // 5. Criação da Preferência e Resposta
     const result = await preference.create({ body: corpo });
     return NextResponse.json({
       init_point: result.init_point,

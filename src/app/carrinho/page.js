@@ -60,6 +60,11 @@ function IconeLixeira() {
   );
 }
 
+export const metadata = {
+  title: 'Carrinho de Compras | Tupã Áudio',
+  description: 'Revise seu pedido, preencha os dados de entrega e finalize a compra dos melhores amplificadores valvulados.',
+  robots: 'noindex, follow', // Páginas de checkout não devem ser indexadas
+};
 export default function CarrinhoPage() {
   const { cart, removeFromCart, updateQuantity, clearCart } = useCart();
   const [passo, setPasso] = useState(1);
@@ -101,29 +106,53 @@ export default function CarrinhoPage() {
     return () => clearInterval(interval);
   }, [checkoutIniciado, extRef, clearCart]);
 
-  const buscarEnderecoPorCep = async (cepDigitado) => {
-    const cepLimpo = cepDigitado.replace(/\D/g, '');
-    if (cepLimpo.length !== 8) return;
+// ============================================================
+// FUNÇÃO CORRIGIDA: Busca endereço via ViaCEP com feedback visual
+// ============================================================
+const buscarEnderecoPorCep = async (cepDigitado) => {
+  const cepLimpo = cepDigitado.replace(/\D/g, '');
+  if (cepLimpo.length !== 8) return;
 
-    setBuscandoCep(true);
-    try {
-      const res = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
-      const data = await res.json();
-      if (!data.erro) {
-        setEndereco((prev) => ({
-          ...prev,
-          rua: data.logradouro || prev.rua,
-          bairro: data.bairro || prev.bairro,
-          cidade: data.localidade || prev.cidade,
-          uf: data.uf || prev.uf,
-        }));
-      }
-    } catch {
-      // Se a busca falhar, o cliente preenche na mão
-    } finally {
-      setBuscandoCep(false);
+  setBuscandoCep(true);
+  setErro(''); // Limpa erro anterior
+  
+  try {
+    const res = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+    const data = await res.json();
+    
+    // Verifica se o CEP existe
+    if (data.erro) {
+      setErro('CEP não encontrado. Verifique o número digitado.');
+      // Limpa os campos de endereço
+      setEndereco((prev) => ({
+        ...prev,
+        rua: '',
+        bairro: '',
+        cidade: '',
+        uf: '',
+      }));
+      return;
     }
-  };
+    
+    // Preenche os campos com os dados do ViaCEP
+    setEndereco((prev) => ({
+      ...prev,
+      rua: data.logradouro || '',
+      bairro: data.bairro || '',
+      cidade: data.localidade || '',
+      uf: data.uf || '',
+    }));
+    
+    // Feedback visual positivo (opcional)
+    // Você pode adicionar um toast ou notificação aqui
+    
+  } catch (error) {
+    console.error('Erro ao buscar CEP:', error);
+    setErro('Erro ao buscar endereço. Preencha manualmente.');
+  } finally {
+    setBuscandoCep(false);
+  }
+};
 
   // Máscara de CPF (000.000.000-00) ou CNPJ (00.000.000/0000-00),
   // detectada automaticamente pela quantidade de dígitos
@@ -547,6 +576,7 @@ export default function CarrinhoPage() {
                       height={50}
                       className="rounded border border-tupaWood/50 object-cover"
                       sizes="50px"
+                        fallbackSrc="/img/placeholder-produto.png" // ✅ ADICIONADO: imagem de fallback
                     />
                     <div className="flex-1">
                       <p className="text-sm text-tupaOffWhite">{item.nome}</p>
