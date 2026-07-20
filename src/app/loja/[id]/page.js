@@ -1,61 +1,46 @@
 // src/app/loja/[id]/page.js
-import { notFound } from 'next/navigation';
 import { produtos } from '@/data/produtos';
 import DetalheProdutoClient from './DetalheProdutoClient';
 
-// =========================================================
-// METADADOS DINÂMICOS PARA SEO
-// =========================================================
-export async function generateMetadata({ params }) {
-  const produto = produtos.find(p => p.id === parseInt(params.id));
+// Força o Next.js a tentar renderizar a página dinamicamente 
+// mesmo se o ID não foi gerado no momento do build
+export const dynamicParams = true; 
+
+export default async function ProdutoPage({ params }) {
+  // Garante a compatibilidade com o Next.js assíncrono
+  const resolvedParams = await params;
+  const id = parseInt(resolvedParams.id);
   
-  if (!produto) {
-    return {
-      title: 'Produto não encontrado',
-    };
-  }
-
-  const descricao = `${produto.nome} - Amplificador valve tone artesanal da Tupã Áudio. ${produto.descricaoCurta || 'Construído sob medida com alma de tubo.'}`;
-  const url = `${process.env.SITE_URL || 'https://www.tupaaudio.com.br'}/loja/${produto.id}`;
-
-  return {
-    title: produto.nome,
-    description: descricao,
-    keywords: `${produto.nome}, amplificador valvulado, valve tone, tube amp, amplificador artesanal`,
-    openGraph: {
-      title: produto.nome,
-      description: descricao,
-      url: url,
-      images: [
-        {
-          url: `/img/${produto.pastaImagens}/1.png`,
-          width: 800,
-          height: 800,
-          alt: produto.nome,
-        },
-      ],
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: produto.nome,
-      description: descricao,
-      images: [`/img/${produto.pastaImagens}/1.png`],
-    },
-    alternates: {
-      canonical: url,
-    },
-  };
-}
-
-// =========================================================
-// COMPONENTE DA PÁGINA
-// =========================================================
-export default function ProdutoPage({ params }) {
-  const produto = produtos.find(p => p.id === parseInt(params.id));
+  // Busca o produto no array
+  const produto = produtos.find(p => p.id === id);
   
+  // Se realmente não existir o ID (ex: /loja/2 ou /loja/6), exibe o aviso
   if (!produto) {
-    notFound();
+    return (
+      <div style={{ padding: '3rem', textAlign: 'center' }}>
+        <h3>Produto não encontrado</h3>
+        <p style={{ marginTop: '1rem' }}> O produto que você procura não está disponível.</p>
+        <a href="/loja" style={{ textDecoration: 'underline', display: 'block', marginTop: '1.5rem' }}>
+          Voltar para a loja
+        </a>
+      </div>
+    );
   }
 
   return <DetalheProdutoClient produto={produto} />;
+}
+
+export async function generateMetadata({ params }) {
+  const resolvedParams = await params;
+  const id = parseInt(resolvedParams.id);
+  const produto = produtos.find(p => p.id === id);
+  
+  if (!produto) {
+    return { title: 'Produto não encontrado | Tupã Audio' };
+  }
+
+  return {
+    title: `${produto.nome} | Tupã Audio`,
+    description: produto.descricao,
+  };
 }
