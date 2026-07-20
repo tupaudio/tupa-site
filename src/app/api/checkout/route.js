@@ -50,16 +50,14 @@ export async function POST(req) {
           }
         }),
       },
-      // --- CORREÇÃO: back_urls e auto_return sempre definidos ---
       back_urls: {
         success: `${baseUrl}/sucesso`,
         failure: `${baseUrl}/falha`,
         pending: `${baseUrl}/pendente`,
       },
       auto_return: 'approved',
-      // ---------------------------------------------------------
       external_reference: externalReference,
-      notification_url: `${baseUrl}/api/webhooks/mercadopago`, // Envia sempre, o MP ignora localhost
+      notification_url: `${baseUrl}/api/webhooks/mercadopago`,
       metadata: {
         cliente_nome: cliente.nome.trim(),
         cliente_email: cliente.email.trim(),
@@ -71,18 +69,16 @@ export async function POST(req) {
       },
     };
 
-    // 4. Criação da Preferência e Resposta
+    // 4. Criação da Preferência e Resposta (agora com external_reference incluído de verdade)
     const result = await preference.create({ body: corpo });
-    return NextResponse.json({ init_point: result.init_point });
+    return NextResponse.json({
+      init_point: result.init_point,
+      external_reference: externalReference,
+    });
 
   } catch (error) {
     console.error("Erro crítico no checkout:", error);
     const errorMessage = error.response?.data?.message || error.message || 'Erro interno ao processar pagamento.';
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
-    const result = await preference.create({ body: corpo });
-    return NextResponse.json({ 
-    init_point: result.init_point,
-    external_reference: externalReference // Adicione isso aqui
-});
 }

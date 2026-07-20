@@ -125,6 +125,36 @@ export default function CarrinhoPage() {
     }
   };
 
+  // Máscara de CPF (000.000.000-00) ou CNPJ (00.000.000/0000-00),
+  // detectada automaticamente pela quantidade de dígitos
+  const aplicarMascaraDoc = (valor) => {
+    const digitos = valor.replace(/\D/g, '').slice(0, 14);
+    if (digitos.length <= 11) {
+      return digitos
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    }
+    return digitos
+      .replace(/(\d{2})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1/$2')
+      .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+  };
+
+  // Máscara de telefone: (00) 0000-0000 ou (00) 00000-0000
+  const aplicarMascaraTelefone = (valor) => {
+    const digitos = valor.replace(/\D/g, '').slice(0, 11);
+    if (digitos.length <= 10) {
+      return digitos
+        .replace(/(\d{2})(\d)/, '($1) $2')
+        .replace(/(\d{4})(\d{1,4})$/, '$1-$2');
+    }
+    return digitos
+      .replace(/(\d{2})(\d)/, '($1) $2')
+      .replace(/(\d{5})(\d{1,4})$/, '$1-$2');
+  };
+
   const subtotal = cart.reduce((soma, item) => soma + Number(item.preco) * item.quantidade, 0);
   const total = subtotal + (frete ? frete.valor : 0);
 
@@ -135,7 +165,10 @@ export default function CarrinhoPage() {
     if (!nome.trim()) return 'Preencha seu nome completo.';
     if (!email.trim()) return 'Preencha seu e-mail.';
     if (!email.includes('@') || !email.includes('.')) return 'Digite um e-mail válido.';
-    if (!doc.trim()) return 'Preencha o CPF ou CNPJ.';
+    const digitosDoc = doc.replace(/\D/g, '');
+    if (digitosDoc.length !== 11 && digitosDoc.length !== 14) {
+      return 'Digite um CPF (11 dígitos) ou CNPJ (14 dígitos) válido.';
+    }
     return null;
   };
 
@@ -143,6 +176,7 @@ export default function CarrinhoPage() {
     if (!endereco.cep.trim() || !endereco.rua.trim() || !endereco.numero.trim() || !endereco.cidade.trim() || !endereco.uf.trim()) {
       return 'Preencha o endereço de entrega completo.';
     }
+    if (!frete) return 'Escolha uma opção de frete (ou "Frete local") para continuar.';
     if (!termos) return 'Você precisa aceitar os termos para continuar.';
     return null;
   };
@@ -242,6 +276,46 @@ export default function CarrinhoPage() {
       {/* Stepper */}
       <Stepper passoAtual={passo} passos={passos} />
 
+      {/* Carrinho — visível e editável em qualquer passo */}
+      <details className="bg-tupaGrey border border-tupaWood rounded-lg" open={passo === 1}>
+        <summary className="cursor-pointer select-none p-4 flex items-center justify-between text-tupaGold font-serif">
+          <span>
+            Seu carrinho — {cart.length} {cart.length === 1 ? 'item' : 'itens'} ({formatarPreco(subtotal)})
+          </span>
+          <span className="text-xs text-tupaSilver">Ver / editar</span>
+        </summary>
+        <div className="p-4 pt-0 space-y-3">
+          {cart.map((item) => (
+            <div key={item.id} className="flex flex-wrap items-center gap-3 border-t border-tupaWood/30 pt-3">
+              <div className="flex-1 min-w-[140px]">
+                <p className="text-sm text-tupaOffWhite">{item.nome}</p>
+                <p className="text-xs text-tupaSilver">{formatarPreco(item.preco)} / unidade</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => updateQuantity(item.id, item.quantidade - 1)} className="w-7 h-7 border border-tupaWood rounded hover:border-tupaGold">−</button>
+                <span className="w-6 text-center text-sm">{item.quantidade}</span>
+                <button type="button" onClick={() => updateQuantity(item.id, item.quantidade + 1)} className="w-7 h-7 border border-tupaWood rounded hover:border-tupaGold">+</button>
+              </div>
+              <button
+                type="button"
+                onClick={() => removeFromCart(item.id)}
+                title="Remover item"
+                className="w-8 h-8 flex items-center justify-center border border-tupaWood rounded text-red-400 hover:text-red-300 hover:border-red-400"
+              >
+                <IconeLixeira />
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => { if (confirm('Esvaziar o carrinho inteiro?')) clearCart(); }}
+            className="text-xs text-red-400 underline hover:text-red-300 pt-2"
+          >
+            Esvaziar carrinho
+          </button>
+        </div>
+      </details>
+
       {/* PASSO 1: Dados Pessoais */}
       {passo === 1 && (
         <div className="bg-tupaGrey border border-tupaWood rounded-lg p-6 space-y-4">
@@ -270,14 +344,14 @@ export default function CarrinhoPage() {
               type="text"
               placeholder="CPF / CNPJ (para nota fiscal) *"
               value={doc}
-              onChange={(e) => setDoc(e.target.value)}
+              onChange={(e) => setDoc(aplicarMascaraDoc(e.target.value))}
               className={campoClasse}
             />
             <input
               type="tel"
               placeholder="Telefone / WhatsApp"
               value={telefone}
-              onChange={(e) => setTelefone(e.target.value)}
+              onChange={(e) => setTelefone(aplicarMascaraTelefone(e.target.value))}
               className={campoClasse}
             />
           </div>
