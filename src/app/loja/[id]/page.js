@@ -1,35 +1,108 @@
-import { produtos } from '@/data/produtos';
+// src/app/loja/[id]/page.js
 import { notFound } from 'next/navigation';
-import DetalheProdutoClient from './DetalheProdutoClient';
+import Image from 'next/image';
+import Link from 'next/link';
+import { produtos } from '@/data/produtos';
+import AdicionarAoCarrinho from '@/components/AdicionarAoCarrinho';
 
+// =========================================================
+// METADADOS DINÂMICOS PARA SEO
+// =========================================================
 export async function generateMetadata({ params }) {
-  const { id } = await params;
-  const produto = produtos.find(p => String(p.id) === String(id));
+  const produto = produtos.find(p => p.id === parseInt(params.id));
+  
+  if (!produto) {
+    return {
+      title: 'Produto não encontrado',
+    };
+  }
 
-  if (!produto) return {};
+  const descricao = `${produto.nome} - Amplificador valve tone artesanal da Tupã Áudio. ${produto.descricaoCurta || 'Construído sob medida com alma de tubo.'}`;
+  const url = `${process.env.SITE_URL || 'https://www.tupaaudio.com.br'}/loja/${produto.id}`;
 
   return {
-    title: `${produto.nome} — Tupã Áudio`,
-    description: produto.descricao,
+    title: produto.nome,
+    description: descricao,
+    keywords: `${produto.nome}, amplificador valvulado, valve tone, tube amp, amplificador artesanal`,
     openGraph: {
       title: produto.nome,
-      description: produto.descricao,
+      description: descricao,
+      url: url,
+      images: [
+        {
+          url: `/img/${produto.pastaImagens}/1.png`,
+          width: 800,
+          height: 800,
+          alt: produto.nome,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: produto.nome,
+      description: descricao,
       images: [`/img/${produto.pastaImagens}/1.png`],
+    },
+    alternates: {
+      canonical: url,
     },
   };
 }
 
-// Gera as páginas de todos os produtos em tempo de build (melhor
-// performance e SEO do que buscar tudo em runtime no navegador).
-export async function generateStaticParams() {
-  return produtos.map((p) => ({ id: String(p.id) }));
-}
+// =========================================================
+// COMPONENTE DA PÁGINA
+// =========================================================
+export default function ProdutoPage({ params }) {
+  const produto = produtos.find(p => p.id === parseInt(params.id));
+  
+  if (!produto) {
+    notFound();
+  }
 
-export default async function Page({ params }) {
-  const { id } = await params;
-  const produto = produtos.find(p => String(p.id) === String(id));
+  return (
+    <main className="max-w-6xl mx-auto p-6 md:p-10">
+      {/* Breadcrumb para SEO e UX */}
+      <nav className="text-sm text-tupaSilver mb-6" aria-label="Breadcrumb">
+        <ol className="flex flex-wrap items-center gap-2">
+          <li>
+            <Link href="/" className="hover:text-tupaGold transition-colors">Início</Link>
+          </li>
+          <li className="text-tupaGold">/</li>
+          <li>
+            <Link href="/loja" className="hover:text-tupaGold transition-colors">Loja</Link>
+          </li>
+          <li className="text-tupaGold">/</li>
+          <li className="text-tupaGold">{produto.nome}</li>
+        </ol>
+      </nav>
 
-  if (!produto) notFound();
+      <div className="grid md:grid-cols-2 gap-8">
+        {/* Imagem do Produto - Otimizada com next/image */}
+        <div className="relative aspect-square bg-tupaGrey border border-tupaWood rounded-lg overflow-hidden">
+          <Image
+            src={`/img/${produto.pastaImagens}/1.png`}
+            alt={produto.nome}
+            fill
+            className="object-contain p-4"
+            sizes="(max-width: 768px) 100vw, 50vw"
+            priority={false}
+            quality={85}
+          />
+        </div>
 
-  return <DetalheProdutoClient produto={produto} />;
+        <div className="flex flex-col gap-4">
+          <h1 className="text-3xl font-serif text-tupaGold">{produto.nome}</h1>
+          <p className="text-2xl font-bold text-tupaOffWhite">
+            {produto.preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+          </p>
+          
+          <div className="prose prose-invert prose-tupaGold">
+            <p className="text-tupaOffWhite">{produto.descricao}</p>
+          </div>
+
+          <AdicionarAoCarrinho produto={produto} />
+        </div>
+      </div>
+    </main>
+  );
 }

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
 import CalculadoraFrete from '@/components/CalculadoraFrete';
+import OtimizadaImagem from '@/components/OtimizadaImagem';
 
 function IconeLixeira() {
   return (
@@ -144,11 +145,13 @@ export default function CarrinhoPage() {
       <div className="bg-tupaGrey border border-tupaWood rounded-lg p-6 space-y-4">
         {cart.map((item) => (
           <div key={item.id} className="flex flex-wrap items-center gap-4 border-b border-tupaWood/30 pb-4 last:border-0 last:pb-0">
-            <img
+            <OtimizadaImagem
               src={`/img/${item.pastaImagens}/1.png`}
               alt={item.nome}
-              className="w-20 h-20 object-cover rounded border border-tupaWood/50 shrink-0"
-              onError={(e) => { e.target.onerror = null; e.target.src = '/img/placeholder.png'; }}
+              width={80}
+              height={80}
+              className="rounded border border-tupaWood/50 shrink-0 object-cover"
+              quality={80}
             />
             <div className="flex-1 min-w-[140px]">
               <h3 className="font-serif text-lg text-tupaOffWhite">{item.nome}</h3>

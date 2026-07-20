@@ -1,0 +1,34 @@
+// src/app/sitemap.js
+import { produtos } from '@/data/produtos';
+
+export default async function sitemap() {
+  const baseUrl = process.env.SITE_URL || 'https://www.tupaaudio.com.br';
+
+  // Rotas estáticas
+  const rotas = [
+    '',
+    '/loja',
+    '/bancada',
+    '/projetos',
+    '/personalizar',
+    '/carrinho',
+    '/politicas/trocas',
+    '/politicas/prazos',
+    '/politicas/privacidade',
+  ].map(rota => ({
+    url: `${baseUrl}${rota}`,
+    lastModified: new Date(),
+    changeFrequency: rota === '' ? 'daily' : 'weekly',
+    priority: rota === '' ? 1.0 : 0.8,
+  }));
+
+  // Rotas de produtos
+  const produtosRotas = produtos.map(produto => ({
+    url: `${baseUrl}/loja/${produto.id}`,
+    lastModified: new Date(),
+    changeFrequency: 'weekly',
+    priority: 0.9,
+  }));
+
+  return [...rotas, ...produtosRotas];
+}
