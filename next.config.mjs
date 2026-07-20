@@ -1,9 +1,10 @@
 // next.config.mjs
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Desabilita a geração de fontes estáticas (problema no Cloudflare)
+  // ⚡ CRUCIAL: Desabilita otimização de fontes para evitar fs.readFileSync
   optimizeFonts: false,
   
+  // Configuração de imagens
   images: {
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
@@ -17,16 +18,14 @@ const nextConfig = {
     minimumCacheTTL: 60,
   },
   
-  // Desabilita features que causam problemas no Workers
-  experimental: {
-    // Desabilita o cache de fontes
-    fontLoaders: [],
-  },
+  // Desabilita features que causam problemas no Cloudflare
+  reactStrictMode: true,
+  swcMinify: true,
   
-  // Webpack config para evitar fs.readFileSync
+  // Configuração do webpack para evitar fs no servidor
   webpack: (config, { isServer }) => {
     if (isServer) {
-      // Substitui require('fs') por um mock
+      // Mock do fs para evitar erros
       config.resolve.alias = {
         ...config.resolve.alias,
         'fs': false,

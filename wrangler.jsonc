@@ -1,4 +1,3 @@
-// wrangler.jsonc
 {
   "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
   "name": "tupa-site",
@@ -9,14 +8,18 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
-  "vars": {
-    "NODE_ENV": "production"
-  },
   "env": {
     "production": {
-      "routes": [{ "pattern": "www.tupaaudio.com.br", "custom_domain": true }],
+      "routes": [
+        {
+          "pattern": "www.tupaaudio.com.br",
+          "custom_domain": true
+        }
+      ],
       "vars": {
-        "NODE_ENV": "production"
+        "NODE_ENV": "production",
+        "SITE_URL": "https://www.tupaaudio.com.br",
+        "NEXT_PUBLIC_SITE_URL": "https://www.tupaaudio.com.br"
       }
     }
   }
