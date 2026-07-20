@@ -1,17 +1,15 @@
 // src/app/layout.js
 import './globals.css';
 import { CartProvider } from '@/context/CartContext';
-import Header from '@/components/Header';  // <-- ADICIONE
-import Footer from '@/components/Footer';  // <-- ADICIONE
 
 export const metadata = {
   metadataBase: new URL(process.env.SITE_URL || 'https://www.tupaaudio.com.br'),
   title: {
-    default: 'Tupã Áudio - Amplificadores Valve Tone Artesanais',
+    default: 'Tupã Áudio - Amplificadores Artesanais',
     template: '%s | Tupã Áudio'
   },
-  description: 'Amplificadores valve tone artesanais com alma de tubo. Som analógico, construção sob medida e design único para músicos que buscam autenticidade.',
-  keywords: ['amplificador valvulado', 'valve tone', 'amplificador artesanal', 'guitarra', 'baixo', 'tube amp', 'handwired'],
+  description: 'Amplificadores artesanais com alma. Som analógico, construção sob medida e design único para músicos que buscam autenticidade.',
+  keywords: ['amplificador valvulado', 'amplificador artesanal', 'guitarra', 'baixo', 'tube amp', 'handwired'],
   authors: [{ name: 'Tupã Áudio' }],
   creator: 'Tupã Áudio',
   publisher: 'Tupã Áudio',
@@ -31,21 +29,21 @@ export const metadata = {
     locale: 'pt_BR',
     url: process.env.SITE_URL || 'https://www.tupaaudio.com.br',
     siteName: 'Tupã Áudio',
-    title: 'Tupã Áudio - Amplificadores Valve Tone Artesanais',
-    description: 'Amplificadores valve tone artesanais com alma de tubo. Som analógico, construção sob medida e design único.',
+    title: 'Tupã Áudio - Amplificadores Artesanais',
+    description: 'Amplificadores artesanais com alma. Som analógico, construção sob medida e design único.',
     images: [
       {
         url: '/og-image.jpg',
         width: 1200,
         height: 630,
-        alt: 'Tupã Áudio - Amplificadores Valve Tone Artesanais',
+        alt: 'Tupã Áudio - Amplificadores Artesanais',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Tupã Áudio - Amplificadores Valve Tone Artesanais',
-    description: 'Amplificadores valve tone artesanais com alma de tubo.',
+    title: 'Tupã Áudio - Amplificadores Artesanais',
+    description: 'Amplificadores artesanais com alma.',
     images: ['/og-image.jpg'],
     site: '@tupaaudio',
     creator: '@tupaaudio',
@@ -58,12 +56,6 @@ export const metadata = {
     ],
     apple: [
       { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
-    ],
-    other: [
-      {
-        rel: 'manifest',
-        url: '/site.webmanifest',
-      },
     ],
   },
   verification: {
@@ -79,11 +71,7 @@ export default function RootLayout({ children }) {
     <html lang="pt-BR">
       <body className="min-h-screen flex flex-col bg-tupaBlack">
         <CartProvider>
-          <Header />  {/* <-- ADICIONE */}
-          <main className="flex-grow">
-            {children}
-          </main>
-          <Footer />  {/* <-- ADICIONE */}
+          {children}
         </CartProvider>
       </body>
     </html>

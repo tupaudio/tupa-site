@@ -1,9 +1,52 @@
+// src/app/carrinho/page.js
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
 import CalculadoraFrete from '@/components/CalculadoraFrete';
 import OtimizadaImagem from '@/components/OtimizadaImagem';
+
+// Componente do Stepper
+function Stepper({ passoAtual, passos }) {
+  return (
+    <div className="flex items-center justify-center gap-4 mb-8">
+      {passos.map((nome, index) => {
+        const numero = index + 1;
+        const isAtivo = numero === passoAtual;
+        const isCompleto = numero < passoAtual;
+        
+        return (
+          <div key={index} className="flex items-center">
+            <div className="flex items-center">
+              <div className={`
+                w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold
+                ${isCompleto ? 'bg-tupaGold text-tupaBlack' : ''}
+                ${isAtivo ? 'bg-tupaGold text-tupaBlack ring-2 ring-tupaGold ring-offset-2 ring-offset-tupaBlack' : ''}
+                ${!isAtivo && !isCompleto ? 'bg-tupaGrey border border-tupaWood text-tupaSilver' : ''}
+              `}>
+                {isCompleto ? '✓' : numero}
+              </div>
+              <span className={`
+                ml-2 text-sm hidden sm:inline
+                ${isAtivo ? 'text-tupaGold' : ''}
+                ${isCompleto ? 'text-tupaSilver' : ''}
+                ${!isAtivo && !isCompleto ? 'text-tupaSilver/50' : ''}
+              `}>
+                {nome}
+              </span>
+            </div>
+            {index < passos.length - 1 && (
+              <div className={`
+                w-12 h-px mx-2
+                ${isCompleto ? 'bg-tupaGold' : 'bg-tupaWood/30'}
+              `} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 function IconeLixeira() {
   return (
@@ -18,7 +61,8 @@ function IconeLixeira() {
 }
 
 export default function CarrinhoPage() {
-  const { cart, removeFromCart, updateQuantity } = useCart();
+  const { cart, removeFromCart, updateQuantity, clearCart } = useCart();
+  const [passo, setPasso] = useState(1);
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [doc, setDoc] = useState('');
@@ -27,9 +71,10 @@ export default function CarrinhoPage() {
   const [frete, setFrete] = useState(null);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
-  const [buscandoCep, setBuscandoCep] = useState(false); // <-- MANTENHA ESTA
+  const [buscandoCep, setBuscandoCep] = useState(false);
+  const [termos, setTermos] = useState(false);
 
-  const buscarEnderecoPorCep = async (cepDigitado) => { // <-- MANTENHA ESTA
+  const buscarEnderecoPorCep = async (cepDigitado) => {
     const cepLimpo = cepDigitado.replace(/\D/g, '');
     if (cepLimpo.length !== 8) return;
 
@@ -47,17 +92,11 @@ export default function CarrinhoPage() {
         }));
       }
     } catch {
-      // Se a busca falhar, o cliente preenche na mão mesmo — sem problema
+      // Se a busca falhar, o cliente preenche na mão
     } finally {
       setBuscandoCep(false);
     }
   };
-
-  // REMOVA COMPLETAMENTE ESTE BLOCO DUPLICADO (linhas 49-68 do seu código original)
-  // const [buscandoCep, setBuscandoCep] = useState(false); <-- REMOVER
-  // const buscarEnderecoPorCep = async (cepDigitado) => { <-- REMOVER
-  //   ... 
-  // };
 
   const subtotal = cart.reduce((soma, item) => soma + Number(item.preco) * item.quantidade, 0);
   const total = subtotal + (frete ? frete.valor : 0);
@@ -65,24 +104,48 @@ export default function CarrinhoPage() {
   const formatarPreco = (valor) =>
     valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  const validar = () => {
+  const validarPasso1 = () => {
     if (!nome.trim()) return 'Preencha seu nome completo.';
     if (!email.trim()) return 'Preencha seu e-mail.';
     if (!email.includes('@') || !email.includes('.')) return 'Digite um e-mail válido.';
-    if (!doc.trim()) return 'Preencha o CPF ou CNPJ (necessário para a nota fiscal).';
-    if (!endereco.cep.trim() || !endereco.rua.trim() || !endereco.numero.trim() || !endereco.cidade.trim() || !endereco.uf.trim()) {
-      return 'Preencha o endereço de entrega completo (CEP, rua, número, cidade e UF).';
-    }
+    if (!doc.trim()) return 'Preencha o CPF ou CNPJ.';
     return null;
+  };
+
+  const validarPasso2 = () => {
+    if (!endereco.cep.trim() || !endereco.rua.trim() || !endereco.numero.trim() || !endereco.cidade.trim() || !endereco.uf.trim()) {
+      return 'Preencha o endereço de entrega completo.';
+    }
+    if (!termos) return 'Você precisa aceitar os termos para continuar.';
+    return null;
+  };
+
+  const irParaPasso = (novoPasso) => {
+    if (novoPasso === 2) {
+      const erroValidacao = validarPasso1();
+      if (erroValidacao) {
+        setErro(erroValidacao);
+        return;
+      }
+    }
+    if (novoPasso === 3) {
+      const erroValidacao = validarPasso2();
+      if (erroValidacao) {
+        setErro(erroValidacao);
+        return;
+      }
+    }
+    setErro('');
+    setPasso(novoPasso);
   };
 
   const finalizarCompra = async (e) => {
     e.preventDefault();
     setErro('');
 
-    const mensagemErro = validar();
-    if (mensagemErro) {
-      setErro(mensagemErro);
+    const erroValidacao = validarPasso2();
+    if (erroValidacao) {
+      setErro(erroValidacao);
       return;
     }
 
@@ -117,12 +180,16 @@ export default function CarrinhoPage() {
         return;
       }
 
+      // Limpa o carrinho antes de redirecionar
+      clearCart();
       window.location.href = data.init_point;
     } catch (err) {
       setErro('Erro ao conectar com o pagamento. Tente novamente.');
       setCarregando(false);
     }
   };
+
+  const passos = ['Dados Pessoais', 'Entrega', 'Pagamento'];
 
   if (cart.length === 0) {
     return (
@@ -139,190 +206,273 @@ export default function CarrinhoPage() {
 
   return (
     <main className="max-w-4xl mx-auto p-6 md:p-10 text-tupaOffWhite space-y-8">
-      <h1 className="text-3xl font-serif text-tupaGold uppercase tracking-widest">Carrinho</h1>
+      <h1 className="text-3xl font-serif text-tupaGold uppercase tracking-widest">Checkout</h1>
 
-      {/* Caixa 1: lista de itens */}
-      <div className="bg-tupaGrey border border-tupaWood rounded-lg p-6 space-y-4">
-        {cart.map((item) => (
-          <div key={item.id} className="flex flex-wrap items-center gap-4 border-b border-tupaWood/30 pb-4 last:border-0 last:pb-0">
-            <OtimizadaImagem
-              src={`/img/${item.pastaImagens}/1.png`}
-              alt={item.nome}
-              width={80}
-              height={80}
-              className="rounded border border-tupaWood/50 shrink-0 object-cover"
-              quality={80}
+      {/* Stepper */}
+      <Stepper passoAtual={passo} passos={passos} />
+
+      {/* PASSO 1: Dados Pessoais */}
+      {passo === 1 && (
+        <div className="bg-tupaGrey border border-tupaWood rounded-lg p-6 space-y-4">
+          <h2 className="text-tupaGold font-serif text-xl">Seus dados</h2>
+          <p className="text-tupaSilver text-xs">Campos com * são obrigatórios.</p>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <input
+              required
+              type="text"
+              placeholder="Nome completo / Razão social *"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              className={campoClasse}
             />
-            <div className="flex-1 min-w-[140px]">
-              <h3 className="font-serif text-lg text-tupaOffWhite">{item.nome}</h3>
-              <p className="text-tupaSilver text-sm">{formatarPreco(item.preco)} / unidade</p>
+            <input
+              required
+              type="email"
+              placeholder="Seu e-mail *"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className={campoClasse}
+            />
+            <input
+              required
+              type="text"
+              placeholder="CPF / CNPJ (para nota fiscal) *"
+              value={doc}
+              onChange={(e) => setDoc(e.target.value)}
+              className={campoClasse}
+            />
+            <input
+              type="tel"
+              placeholder="Telefone / WhatsApp"
+              value={telefone}
+              onChange={(e) => setTelefone(e.target.value)}
+              className={campoClasse}
+            />
+          </div>
+
+          {erro && <p className="text-red-400 text-sm font-bold">{erro}</p>}
+
+          <button
+            type="button"
+            onClick={() => irParaPasso(2)}
+            className="w-full bg-tupaGold text-tupaBlack py-3 rounded font-bold uppercase tracking-widest hover:bg-white transition-colors"
+          >
+            Próximo
+          </button>
+        </div>
+      )}
+
+      {/* PASSO 2: Entrega */}
+      {passo === 2 && (
+        <div className="space-y-4">
+          {/* Resumo rápido do pedido */}
+          <div className="bg-tupaGrey border border-tupaWood rounded-lg p-4">
+            <h3 className="text-tupaGold font-serif text-sm uppercase tracking-wider mb-2">Resumo do pedido</h3>
+            <p className="text-tupaSilver text-sm">
+              {cart.length} {cart.length === 1 ? 'item' : 'itens'} · Total: {formatarPreco(subtotal)}
+            </p>
+          </div>
+
+          {/* Endereço */}
+          <div className="bg-tupaGrey border border-tupaWood rounded-lg p-6 space-y-4">
+            <h2 className="text-tupaGold font-serif text-xl">Endereço de entrega</h2>
+            <p className="text-tupaSilver text-xs">Campos com * são obrigatórios.</p>
+
+            <div className="grid sm:grid-cols-3 gap-4">
+              <input
+                required
+                type="text"
+                placeholder={buscandoCep ? 'Buscando endereço...' : 'CEP *'}
+                maxLength={9}
+                value={endereco.cep}
+                onChange={(e) => {
+                  let v = e.target.value.replace(/\D/g, '').slice(0, 8);
+                  if (v.length > 5) v = v.slice(0, 5) + '-' + v.slice(5);
+                  setEndereco({ ...endereco, cep: v });
+                  if (v.replace(/\D/g, '').length === 8) buscarEnderecoPorCep(v);
+                }}
+                className={campoClasse}
+              />
+              <input
+                required
+                type="text"
+                placeholder="Rua / Logradouro *"
+                value={endereco.rua}
+                onChange={(e) => setEndereco({ ...endereco, rua: e.target.value })}
+                className={`${campoClasse} sm:col-span-2`}
+              />
+              <input
+                required
+                type="text"
+                placeholder="Nº *"
+                value={endereco.numero}
+                onChange={(e) => setEndereco({ ...endereco, numero: e.target.value })}
+                className={campoClasse}
+              />
+              <input
+                type="text"
+                placeholder="Complemento"
+                value={endereco.complemento}
+                onChange={(e) => setEndereco({ ...endereco, complemento: e.target.value })}
+                className={campoClasse}
+              />
+              <input
+                type="text"
+                placeholder="Bairro"
+                value={endereco.bairro}
+                onChange={(e) => setEndereco({ ...endereco, bairro: e.target.value })}
+                className={campoClasse}
+              />
+              <input
+                required
+                type="text"
+                placeholder="Cidade *"
+                value={endereco.cidade}
+                onChange={(e) => setEndereco({ ...endereco, cidade: e.target.value })}
+                className={campoClasse}
+              />
+              <input
+                required
+                type="text"
+                placeholder="UF *"
+                maxLength={2}
+                value={endereco.uf}
+                onChange={(e) => setEndereco({ ...endereco, uf: e.target.value.toUpperCase() })}
+                className={campoClasse}
+              />
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+
+            {/* Cálculo de frete */}
+            <div className="pt-4 border-t border-tupaWood/30">
+              <CalculadoraFrete itens={cart} onSelecionar={setFrete} />
+              {frete && (
+                <div className="flex justify-between text-sm text-tupaSilver mt-2">
+                  <span>Frete selecionado:</span>
+                  <span className="text-tupaGold">{frete.nome} - {formatarPreco(frete.valor)}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Termos */}
+            <div className="flex items-start gap-3 pt-4 border-t border-tupaWood/30">
+              <input
+                type="checkbox"
+                id="termos"
+                checked={termos}
+                onChange={(e) => setTermos(e.target.checked)}
+                className="mt-1 w-4 h-4 accent-tupaGold"
+              />
+              <label htmlFor="termos" className="text-sm text-tupaSilver">
+                Li e aceito os{' '}
+                <Link href="/politicas/trocas" className="text-tupaGold hover:underline">
+                  termos de serviço
+                </Link>
+                {' '}e{' '}
+                <Link href="/politicas/privacidade" className="text-tupaGold hover:underline">
+                  política de privacidade
+                </Link>
+                .
+              </label>
+            </div>
+
+            {erro && <p className="text-red-400 text-sm font-bold">{erro}</p>}
+
+            <div className="flex gap-4">
               <button
                 type="button"
-                onClick={() => updateQuantity(item.id, item.quantidade - 1)}
-                className="w-8 h-8 border border-tupaWood rounded hover:border-tupaGold transition-colors"
+                onClick={() => irParaPasso(1)}
+                className="flex-1 bg-tupaGrey border border-tupaWood text-tupaOffWhite py-3 rounded font-bold hover:border-tupaGold transition-colors"
               >
-                −
+                Voltar
               </button>
-              <span className="w-6 text-center">{item.quantidade}</span>
               <button
                 type="button"
-                onClick={() => updateQuantity(item.id, item.quantidade + 1)}
-                className="w-8 h-8 border border-tupaWood rounded hover:border-tupaGold transition-colors"
+                onClick={() => irParaPasso(3)}
+                className="flex-1 bg-tupaGold text-tupaBlack py-3 rounded font-bold uppercase tracking-widest hover:bg-white transition-colors"
               >
-                +
+                Revisar pedido
               </button>
             </div>
-            <button
-              type="button"
-              onClick={() => removeFromCart(item.id)}
-              title="Remover item"
-              aria-label="Remover item"
-              className="shrink-0 w-9 h-9 flex items-center justify-center border border-tupaWood rounded text-red-400 hover:text-red-300 hover:border-red-400 transition-colors"
-            >
-              <IconeLixeira />
-            </button>
           </div>
-        ))}
-      </div>
-
-      {/* Caixa 2: resumo + frete */}
-      <div className="bg-tupaGrey border border-tupaWood rounded-lg p-6 space-y-4">
-        <h2 className="text-tupaGold font-serif text-xl">Resumo do pedido</h2>
-
-        <div className="flex justify-between text-sm text-tupaSilver">
-          <span>Subtotal</span>
-          <span>{formatarPreco(subtotal)}</span>
         </div>
-        {frete && (
-          <div className="flex justify-between text-sm text-tupaSilver">
-            <span>Frete</span>
-            <span>{formatarPreco(frete.valor)}</span>
+      )}
+
+      {/* PASSO 3: Pagamento e Revisão Final */}
+      {passo === 3 && (
+        <div className="space-y-4">
+          {/* Revisão do pedido */}
+          <div className="bg-tupaGrey border border-tupaWood rounded-lg p-6 space-y-4">
+            <h2 className="text-tupaGold font-serif text-xl">Revisão do pedido</h2>
+
+            {/* Itens */}
+            <div className="space-y-3">
+              {cart.map((item) => (
+                <div key={item.id} className="flex items-center gap-4 border-b border-tupaWood/30 pb-3 last:border-0 last:pb-0">
+                  <OtimizadaImagem
+                    src={`/img/${item.pastaImagens}/1.png`}
+                    alt={item.nome}
+                    width={50}
+                    height={50}
+                    className="rounded border border-tupaWood/50 object-cover"
+                    sizes="50px"
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm text-tupaOffWhite">{item.nome}</p>
+                    <p className="text-xs text-tupaSilver">{item.quantidade}x {formatarPreco(item.preco)}</p>
+                  </div>
+                  <p className="text-sm text-tupaGold font-bold">{formatarPreco(Number(item.preco) * item.quantidade)}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Totais */}
+            <div className="border-t border-tupaWood/30 pt-4 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-tupaSilver">Subtotal</span>
+                <span className="text-tupaOffWhite">{formatarPreco(subtotal)}</span>
+              </div>
+              {frete && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-tupaSilver">Frete</span>
+                  <span className="text-tupaOffWhite">{formatarPreco(frete.valor)}</span>
+                </div>
+              )}
+              <div className="flex justify-between font-bold text-tupaGold text-lg border-t border-tupaWood/30 pt-3">
+                <span>Total</span>
+                <span>{formatarPreco(total)}</span>
+              </div>
+            </div>
+
+            {/* Dados do cliente */}
+            <div className="bg-tupaBlack p-4 rounded border border-tupaWood/30 text-sm">
+              <p className="text-tupaSilver"><span className="text-tupaGold">Nome:</span> {nome}</p>
+              <p className="text-tupaSilver"><span className="text-tupaGold">E-mail:</span> {email}</p>
+              <p className="text-tupaSilver"><span className="text-tupaGold">Entrega:</span> {endereco.rua}, {endereco.numero} {endereco.complemento ? `- ${endereco.complemento}` : ''}, {endereco.bairro} - {endereco.cidade}/{endereco.uf}, CEP: {endereco.cep}</p>
+            </div>
+
+            {erro && <p className="text-red-400 text-sm font-bold">{erro}</p>}
+
+            <div className="flex gap-4">
+              <button
+                type="button"
+                onClick={() => irParaPasso(2)}
+                className="flex-1 bg-tupaGrey border border-tupaWood text-tupaOffWhite py-3 rounded font-bold hover:border-tupaGold transition-colors"
+              >
+                Voltar
+              </button>
+              <button
+                type="submit"
+                onClick={finalizarCompra}
+                disabled={carregando}
+                className="flex-1 bg-tupaGold text-tupaBlack py-3 rounded font-bold uppercase tracking-widest hover:bg-white transition-colors disabled:opacity-50"
+              >
+                {carregando ? 'Processando...' : 'Finalizar Compra'}
+              </button>
+            </div>
           </div>
-        )}
-        <div className="flex justify-between font-bold text-tupaGold text-lg border-t border-tupaWood pt-3">
-          <span>Total</span>
-          <span>{formatarPreco(total)}</span>
         </div>
-
-        <CalculadoraFrete itens={cart} onSelecionar={setFrete} />
-      </div>
-
-      {/* Caixa 3: dados do cliente e pagamento */}
-      <form onSubmit={finalizarCompra} className="bg-tupaGrey border border-tupaWood rounded-lg p-6 space-y-4">
-        <h2 className="text-tupaGold font-serif text-xl mb-2">Seus dados</h2>
-        <p className="text-tupaSilver text-xs">Campos com * são obrigatórios.</p>
-
-        <div className="grid sm:grid-cols-2 gap-4">
-          <input
-            required
-            type="text"
-            placeholder="Nome completo / Razão social *"
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
-            className={campoClasse}
-          />
-          <input
-            required
-            type="email"
-            placeholder="Seu e-mail *"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className={campoClasse}
-          />
-          <input
-            required
-            type="text"
-            placeholder="CPF / CNPJ (para nota fiscal) *"
-            value={doc}
-            onChange={(e) => setDoc(e.target.value)}
-            className={campoClasse}
-          />
-          <input
-            type="tel"
-            placeholder="Telefone / WhatsApp"
-            value={telefone}
-            onChange={(e) => setTelefone(e.target.value)}
-            className={campoClasse}
-          />
-        </div>
-
-        <p className="text-tupaGold text-xs uppercase tracking-widest pt-2">Endereço de entrega *</p>
-        <div className="grid sm:grid-cols-3 gap-4">
-          <input
-            required
-            type="text"
-            placeholder={buscandoCep ? 'Buscando endereço...' : 'CEP *'}
-            maxLength={9}
-            value={endereco.cep}
-            onChange={(e) => {
-              let v = e.target.value.replace(/\D/g, '').slice(0, 8);
-              if (v.length > 5) v = v.slice(0, 5) + '-' + v.slice(5);
-              setEndereco({ ...endereco, cep: v });
-              if (v.replace(/\D/g, '').length === 8) buscarEnderecoPorCep(v);
-            }}
-            className={campoClasse}
-          />
-          <input
-            required
-            type="text"
-            placeholder="Rua / Logradouro *"
-            value={endereco.rua}
-            onChange={(e) => setEndereco({ ...endereco, rua: e.target.value })}
-            className={`${campoClasse} sm:col-span-2`}
-          />
-          <input
-            required
-            type="text"
-            placeholder="Nº *"
-            value={endereco.numero}
-            onChange={(e) => setEndereco({ ...endereco, numero: e.target.value })}
-            className={campoClasse}
-          />
-          <input
-            type="text"
-            placeholder="Complemento"
-            value={endereco.complemento}
-            onChange={(e) => setEndereco({ ...endereco, complemento: e.target.value })}
-            className={campoClasse}
-          />
-          <input
-            type="text"
-            placeholder="Bairro"
-            value={endereco.bairro}
-            onChange={(e) => setEndereco({ ...endereco, bairro: e.target.value })}
-            className={campoClasse}
-          />
-          <input
-            required
-            type="text"
-            placeholder="Cidade *"
-            value={endereco.cidade}
-            onChange={(e) => setEndereco({ ...endereco, cidade: e.target.value })}
-            className={campoClasse}
-          />
-          <input
-            required
-            type="text"
-            placeholder="UF *"
-            maxLength={2}
-            value={endereco.uf}
-            onChange={(e) => setEndereco({ ...endereco, uf: e.target.value.toUpperCase() })}
-            className={campoClasse}
-          />
-        </div>
-
-        {erro && <p className="text-red-400 text-sm font-bold">{erro}</p>}
-
-        <button
-          type="submit"
-          disabled={carregando}
-          className="w-full bg-tupaGold text-tupaBlack py-3 rounded font-bold uppercase tracking-widest hover:bg-white transition-colors disabled:opacity-50"
-        >
-          {carregando ? 'Processando...' : 'Finalizar Compra'}
-        </button>
-      </form>
+      )}
     </main>
   );
 }

@@ -7,13 +7,13 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "preview": "npx @opennextjs/cloudflare build && npx @opennextjs/cloudflare preview",
-    "deploy": "npm run build && npx @opennextjs/cloudflare build && npx wrangler deploy",
-    "deploy:quick": "npx @opennextjs/cloudflare build && npx wrangler deploy --env production",
-    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+    "cf:build": "npx @opennextjs/cloudflare build",
+    "cf:deploy": "npx wrangler deploy",
+    "deploy": "npm run build && npm run cf:build && npm run cf:deploy",
     "optimize:images": "node scripts/optimize-images.js",
     "build:optimized": "npm run optimize:images && npm run build"
   },
+
   "dependencies": {
     "@react-email/components": "^1.0.12",
     "@react-email/render": "^2.1.0",

@@ -4,7 +4,6 @@ import { produtos } from '@/data/produtos';
 export default async function sitemap() {
   const baseUrl = process.env.SITE_URL || 'https://www.tupaaudio.com.br';
 
-  // Rotas estáticas
   const rotas = [
     '',
     '/loja',
@@ -22,7 +21,6 @@ export default async function sitemap() {
     priority: rota === '' ? 1.0 : 0.8,
   }));
 
-  // Rotas de produtos
   const produtosRotas = produtos.map(produto => ({
     url: `${baseUrl}/loja/${produto.id}`,
     lastModified: new Date(),

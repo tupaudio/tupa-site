@@ -1,10 +1,10 @@
 // next.config.mjs
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // ⚡ CRUCIAL: Desabilita otimização de fontes para evitar fs.readFileSync
+  // ⚡ CRUCIAL: Desabilita otimização de fontes (causa do erro 1101)
   optimizeFonts: false,
   
-  // Configuração de imagens
+  // Configuração de imagens otimizadas
   images: {
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
@@ -16,16 +16,50 @@ const nextConfig = {
       },
     ],
     minimumCacheTTL: 60,
+    dangerouslyAllowSVG: true,
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
   
-  // Desabilita features que causam problemas no Cloudflare
+  // Configurações de performance
   reactStrictMode: true,
   swcMinify: true,
+  compress: true,
   
-  // Configuração do webpack para evitar fs no servidor
+  // Headers para SEO e performance
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+        ],
+      },
+      {
+        source: '/img/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+    ];
+  },
+  
+  // Webpack: evita fs.readFileSync
   webpack: (config, { isServer }) => {
     if (isServer) {
-      // Mock do fs para evitar erros
       config.resolve.alias = {
         ...config.resolve.alias,
         'fs': false,

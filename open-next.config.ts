@@ -10,4 +10,8 @@ export default defineCloudflareConfig({
   cloudflare: {
     compatibility_flags: ["nodejs_compat"],
   },
+  // Configuração para evitar fs.readFileSync
+  build: {
+    command: "next build --webpack",
+  },
 });

@@ -1,4 +1,5 @@
 // src/components/OtimizadaImagem.js
+'use client';
 import Image from 'next/image';
 import { useState } from 'react';
 
@@ -16,27 +17,11 @@ export default function OtimizadaImagem({
 }) {
   const [erro, setErro] = useState(false);
 
-  // Fallback para imagem placeholder
   const handleError = () => {
     setErro(true);
   };
 
-  // Se a imagem for SVG ou já estiver otimizada, pode usar img normal
-  const isSvg = src?.endsWith('.svg');
-  const isOptimized = src?.includes('_next/static');
-
-  if (isSvg || isOptimized) {
-    return (
-      <img
-        src={src}
-        alt={alt}
-        className={className}
-        style={fill ? { objectFit: 'contain' } : {}}
-        {...props}
-      />
-    );
-  }
-
+  // Fallback para imagens não otimizadas
   if (erro) {
     return (
       <div className={`bg-tupaGrey border border-tupaWood rounded ${className}`}>
@@ -45,6 +30,11 @@ export default function OtimizadaImagem({
         </div>
       </div>
     );
+  }
+
+  // Se for SVG, usa img normal
+  if (src?.endsWith('.svg')) {
+    return <img src={src} alt={alt} className={className} {...props} />;
   }
 
   return (
