@@ -1,14 +1,15 @@
 {
   "name": "tupa-audio",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "preview": "npx @opennextjs/cloudflare build && npx @opennextjs/cloudflare preview",
+    "deploy": "npm run build && npx @opennextjs/cloudflare build && npx wrangler deploy --env production",
+    "deploy:quick": "npx @opennextjs/cloudflare build && npx wrangler deploy --env production",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "optimize:images": "node scripts/optimize-images.js",
     "build:optimized": "npm run optimize:images && npm run build"
@@ -25,11 +26,13 @@
   },
   "devDependencies": {
     "@netlify/plugin-nextjs": "^5",
+    "@opennextjs/cloudflare": "^0.6.0",
     "@tailwindcss/postcss": "^4",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
     "sharp": "^0.35.3",
-    "tailwindcss": "^4"
+    "tailwindcss": "^4",
+    "wrangler": "^4.0.0"
   },
   "allowScripts": {
     "sharp@0.34.5": true,

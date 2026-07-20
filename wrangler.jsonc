@@ -1,11 +1,23 @@
+// wrangler.jsonc
 {
-  "$schema": "./node_modules/wrangler/config-schema.json",
-  "main": ".open-next/worker.js",
+  "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
   "name": "tupa-site",
-  "compatibility_date": "2026-07-16",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-01-01",
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
+  },
+  "vars": {
+    "NODE_ENV": "production"
+  },
+  "env": {
+    "production": {
+      "routes": [{ "pattern": "www.tupaaudio.com.br", "custom_domain": true }],
+      "vars": {
+        "NODE_ENV": "production"
+      }
+    }
   }
 }
