@@ -60,11 +60,6 @@ function IconeLixeira() {
   );
 }
 
-export const metadata = {
-  title: 'Carrinho de Compras | Tupã Áudio',
-  description: 'Revise seu pedido, preencha os dados de entrega e finalize a compra dos melhores amplificadores valvulados.',
-  robots: 'noindex, follow', // Páginas de checkout não devem ser indexadas
-};
 export default function CarrinhoPage() {
   const { cart, removeFromCart, updateQuantity, clearCart } = useCart();
   const [passo, setPasso] = useState(1);
@@ -83,79 +78,80 @@ export default function CarrinhoPage() {
   const [checkoutIniciado, setCheckoutIniciado] = useState(false);
   const [linkPagamento, setLinkPagamento] = useState('');
   const [extRef, setExtRef] = useState('');
+  // ✅ NOVO: Guarda referência da janela do Mercado Pago
+  const [janelaMercadoPago, setJanelaMercadoPago] = useState(null);
 
-  // Efeito de pooling de segundo plano para verificar status via external_reference
+  // ✅ CORRIGIDO: Polling com fechamento automático da janela
   useEffect(() => {
     if (!checkoutIniciado || !extRef) return;
 
-    const interval = setInterval(async () => {
+    let interval = setInterval(async () => {
       try {
         const res = await fetch(`/api/status-pagamento?external_reference=${extRef}`);
         const data = await res.json();
 
         if (data.status === 'approved') {
           clearInterval(interval);
-          clearCart(); 
-          window.location.href = '/sucesso'; 
+          
+          // ✅ FECHA A JANELA DO MERCADO PAGO
+          if (janelaMercadoPago && !janelaMercadoPago.closed) {
+            janelaMercadoPago.close();
+          }
+          
+          clearCart();
+          window.location.href = '/sucesso';
         }
       } catch (err) {
         console.error("Erro ao verificar o status de pagamento:", err);
       }
-    }, 4000); // Executa a checagem a cada 4 segundos
+    }, 4000);
 
     return () => clearInterval(interval);
-  }, [checkoutIniciado, extRef, clearCart]);
+  }, [checkoutIniciado, extRef, clearCart, janelaMercadoPago]);
 
-// ============================================================
-// FUNÇÃO CORRIGIDA: Busca endereço via ViaCEP com feedback visual
-// ============================================================
-const buscarEnderecoPorCep = async (cepDigitado) => {
-  const cepLimpo = cepDigitado.replace(/\D/g, '');
-  if (cepLimpo.length !== 8) return;
+  // ============================================================
+  // FUNÇÃO CORRIGIDA: Busca endereço via ViaCEP com feedback visual
+  // ============================================================
+  const buscarEnderecoPorCep = async (cepDigitado) => {
+    const cepLimpo = cepDigitado.replace(/\D/g, '');
+    if (cepLimpo.length !== 8) return;
 
-  setBuscandoCep(true);
-  setErro(''); // Limpa erro anterior
-  
-  try {
-    const res = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
-    const data = await res.json();
+    setBuscandoCep(true);
+    setErro('');
     
-    // Verifica se o CEP existe
-    if (data.erro) {
-      setErro('CEP não encontrado. Verifique o número digitado.');
-      // Limpa os campos de endereço
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+      const data = await res.json();
+      
+      if (data.erro) {
+        setErro('CEP não encontrado. Verifique o número digitado.');
+        setEndereco((prev) => ({
+          ...prev,
+          rua: '',
+          bairro: '',
+          cidade: '',
+          uf: '',
+        }));
+        return;
+      }
+      
       setEndereco((prev) => ({
         ...prev,
-        rua: '',
-        bairro: '',
-        cidade: '',
-        uf: '',
+        rua: data.logradouro || '',
+        bairro: data.bairro || '',
+        cidade: data.localidade || '',
+        uf: data.uf || '',
       }));
-      return;
+      
+    } catch (error) {
+      console.error('Erro ao buscar CEP:', error);
+      setErro('Erro ao buscar endereço. Preencha manualmente.');
+    } finally {
+      setBuscandoCep(false);
     }
-    
-    // Preenche os campos com os dados do ViaCEP
-    setEndereco((prev) => ({
-      ...prev,
-      rua: data.logradouro || '',
-      bairro: data.bairro || '',
-      cidade: data.localidade || '',
-      uf: data.uf || '',
-    }));
-    
-    // Feedback visual positivo (opcional)
-    // Você pode adicionar um toast ou notificação aqui
-    
-  } catch (error) {
-    console.error('Erro ao buscar CEP:', error);
-    setErro('Erro ao buscar endereço. Preencha manualmente.');
-  } finally {
-    setBuscandoCep(false);
-  }
-};
+  };
 
-  // Máscara de CPF (000.000.000-00) ou CNPJ (00.000.000/0000-00),
-  // detectada automaticamente pela quantidade de dígitos
+  // Máscara de CPF (000.000.000-00) ou CNPJ (00.000.000/0000-00)
   const aplicarMascaraDoc = (valor) => {
     const digitos = valor.replace(/\D/g, '').slice(0, 14);
     if (digitos.length <= 11) {
@@ -229,6 +225,7 @@ const buscarEnderecoPorCep = async (cepDigitado) => {
     setPasso(novoPasso);
   };
 
+  // ✅ CORRIGIDO: Salva a referência da janela aberta
   const finalizarCompra = async (e) => {
     e.preventDefault();
     setErro('');
@@ -275,8 +272,10 @@ const buscarEnderecoPorCep = async (cepDigitado) => {
       setCheckoutIniciado(true);
       setCarregando(false);
 
-      // Abre o Mercado Pago em aba paralela externa para o fluxo do Pix/Cartão
-      window.open(data.init_point, '_blank');
+      // ✅ ABRE E SALVA A JANELA
+      const novaJanela = window.open(data.init_point, '_blank');
+      setJanelaMercadoPago(novaJanela);
+      
     } catch (err) {
       setErro('Erro ao conectar com o pagamento. Tente novamente.');
       setCarregando(false);
@@ -400,7 +399,6 @@ const buscarEnderecoPorCep = async (cepDigitado) => {
       {/* PASSO 2: Entrega */}
       {passo === 2 && (
         <div className="space-y-4">
-          {/* Resumo rápido do pedido */}
           <div className="bg-tupaGrey border border-tupaWood rounded-lg p-4">
             <h3 className="text-tupaGold font-serif text-sm uppercase tracking-wider mb-2">Resumo do pedido</h3>
             <p className="text-tupaSilver text-sm">
@@ -408,7 +406,6 @@ const buscarEnderecoPorCep = async (cepDigitado) => {
             </p>
           </div>
 
-          {/* Endereço */}
           <div className="bg-tupaGrey border border-tupaWood rounded-lg p-6 space-y-4">
             <h2 className="text-tupaGold font-serif text-xl">Endereço de entrega</h2>
             <p className="text-tupaSilver text-xs">Campos com * são obrigatórios.</p>
@@ -477,7 +474,6 @@ const buscarEnderecoPorCep = async (cepDigitado) => {
               />
             </div>
 
-            {/* Cálculo de frete */}
             <div className="pt-4 border-t border-tupaWood/30">
               <CalculadoraFrete itens={cart} onSelecionar={setFrete} />
               {frete && (
@@ -488,7 +484,6 @@ const buscarEnderecoPorCep = async (cepDigitado) => {
               )}
             </div>
 
-            {/* Termos */}
             <div className="flex items-start gap-3 pt-4 border-t border-tupaWood/30">
               <input
                 type="checkbox"
@@ -565,7 +560,6 @@ const buscarEnderecoPorCep = async (cepDigitado) => {
             <div className="bg-tupaGrey border border-tupaWood rounded-lg p-6 space-y-4">
               <h2 className="text-tupaGold font-serif text-xl">Revisão do pedido</h2>
 
-              {/* Itens */}
               <div className="space-y-3">
                 {cart.map((item) => (
                   <div key={item.id} className="flex items-center gap-4 border-b border-tupaWood/30 pb-3 last:border-0 last:pb-0">
@@ -576,7 +570,7 @@ const buscarEnderecoPorCep = async (cepDigitado) => {
                       height={50}
                       className="rounded border border-tupaWood/50 object-cover"
                       sizes="50px"
-                        fallbackSrc="/img/placeholder-produto.png" // ✅ ADICIONADO: imagem de fallback
+                      fallbackSrc="/img/placeholder-produto.png"
                     />
                     <div className="flex-1">
                       <p className="text-sm text-tupaOffWhite">{item.nome}</p>
@@ -587,7 +581,6 @@ const buscarEnderecoPorCep = async (cepDigitado) => {
                 ))}
               </div>
 
-              {/* Totais */}
               <div className="border-t border-tupaWood/30 pt-4 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-tupaSilver">Subtotal</span>
@@ -605,7 +598,6 @@ const buscarEnderecoPorCep = async (cepDigitado) => {
                 </div>
               </div>
 
-              {/* Dados do cliente */}
               <div className="bg-tupaBlack p-4 rounded border border-tupaWood/30 text-sm">
                 <p className="text-tupaSilver"><span className="text-tupaGold">Nome:</span> {nome}</p>
                 <p className="text-tupaSilver"><span className="text-tupaGold">E-mail:</span> {email}</p>
