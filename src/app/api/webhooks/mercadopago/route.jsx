@@ -69,10 +69,10 @@ export async function POST(request) {
   // ============================================================
   // VALIDAÇÃO DA ASSINATURA (SEGURANÇA) - DESCOMENTE EM PRODUÇÃO
   // ============================================================
-  // if (!validateMercadoPagoSignature(request)) {
-  //   console.warn('[webhook] Assinatura inválida - rejeitando');
-  //   return NextResponse.json({ error: 'Assinatura inválida' }, { status: 401 });
-  // }
+ if (!validateMercadoPagoSignature(request)) {
+    console.warn('[webhook] Assinatura inválida - rejeitando');
+    return NextResponse.json({ error: 'Assinatura inválida' }, { status: 401 });
+  }
   
   const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
