@@ -1,7 +1,5 @@
 // src/app/loja/[id]/page.js
 import { notFound } from 'next/navigation';
-import Image from 'next/image';
-import Link from 'next/link';
 import { produtos } from '@/data/produtos';
 import DetalheProdutoClient from './DetalheProdutoClient';
 
@@ -9,9 +7,7 @@ import DetalheProdutoClient from './DetalheProdutoClient';
 // METADADOS DINÂMICOS PARA SEO
 // =========================================================
 export async function generateMetadata({ params }) {
-  // Aguarda o params ser resolvido
-  const { id } = await params;
-  const produto = produtos.find(p => p.id === parseInt(id));
+  const produto = produtos.find(p => p.id === parseInt(params.id));
   
   if (!produto) {
     return {
@@ -55,15 +51,11 @@ export async function generateMetadata({ params }) {
 // COMPONENTE DA PÁGINA
 // =========================================================
 export default function ProdutoPage({ params }) {
-  // Aguarda o params ser resolvido (Next.js 15+)
-  const { id } = params;
-  const produto = produtos.find(p => p.id === parseInt(id));
+  const produto = produtos.find(p => p.id === parseInt(params.id));
   
-  // Se não encontrar o produto, retorna 404
   if (!produto) {
     notFound();
   }
 
-  // Usa o componente cliente para a parte interativa
   return <DetalheProdutoClient produto={produto} />;
 }

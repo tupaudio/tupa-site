@@ -24,8 +24,11 @@ export default function DetalheProdutoClient({ produto }) {
 
   const handleAdicionarAoCarrinho = () => {
     addToCart({
-      ...produto,
-      quantidade: quantidade
+      id: produto.id,
+      nome: produto.nome,
+      preco: produto.preco,
+      quantidade: quantidade,
+      pastaImagens: produto.pastaImagens,
     });
   };
 
