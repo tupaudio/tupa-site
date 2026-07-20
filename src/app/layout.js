@@ -1,8 +1,8 @@
 // src/app/layout.js
 import './globals.css';
 import { CartProvider } from '@/context/CartContext';
-import Header from '@/components/Header';  // <-- IMPORT DO HEADER
-import Footer from '@/components/Footer';  // <-- IMPORT DO FOOTER
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 
 export const metadata = {
   metadataBase: new URL(process.env.SITE_URL || 'https://www.tupaaudio.com.br'),
@@ -73,7 +73,11 @@ export default function RootLayout({ children }) {
     <html lang="pt-BR">
       <body className="min-h-screen flex flex-col bg-tupaBlack">
         <CartProvider>
-          {children}
+          <Header />
+          <main className="flex-grow">
+            {children}
+          </main>
+          <Footer />
         </CartProvider>
       </body>
     </html>
