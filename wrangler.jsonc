@@ -12,11 +12,7 @@
       "routes": [
         { "pattern": "www.tupaaudio.com.br", "custom_domain": true },
         { "pattern": "tupaaudio.com.br", "custom_domain": true }
-      ],
-      "vars": {
-        "NODE_ENV": "production",
-        "SITE_URL": "https://www.tupaaudio.com.br"
-      }
+      ]    
     }
   }
 }
