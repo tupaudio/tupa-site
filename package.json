@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "preview": "npx @opennextjs/cloudflare build && npx @opennextjs/cloudflare preview",
-    "deploy": "npm run build && npx @opennextjs/cloudflare build && npx wrangler deploy --env production",
+    "deploy": "npm run build && npx @opennextjs/cloudflare build && npx wrangler deploy",
     "deploy:quick": "npx @opennextjs/cloudflare build && npx wrangler deploy --env production",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "optimize:images": "node scripts/optimize-images.js",
