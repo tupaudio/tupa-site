@@ -3,8 +3,9 @@
 import CalculadoraFrete from '@/components/CalculadoraFrete';
 import { useState, useEffect } from 'react';
 import { useCart } from '@/context/CartContext';
-import Image from 'next/image';
+import OtimizadaImagem from '@/components/OtimizadaImagem';
 import Link from 'next/link';
+import { getImagemProduto } from '@/utils/imagens';
 
 export default function DetalheProdutoClient({ produto }) {
   const { addToCart } = useCart();
@@ -53,14 +54,15 @@ export default function DetalheProdutoClient({ produto }) {
         {/* Coluna 1: Galeria de Imagens */}
         <div className="space-y-4">
           <div className="relative aspect-square bg-tupaGrey border border-tupaWood rounded-lg overflow-hidden">
-            <Image
-              src={`/img/${produto.pastaImagens}/${imgSelecionada}.png`}
+            <OtimizadaImagem
+              src={getImagemProduto(produto, imgSelecionada)}
               alt={produto.nome}
               fill
               className="object-contain p-4"
               sizes="(max-width: 768px) 100vw, 50vw"
               priority
               quality={85}
+              fallbackSrc="/img/placeholder-produto.png"
             />
           </div>
           <div className="grid grid-cols-6 gap-2">
@@ -73,12 +75,13 @@ export default function DetalheProdutoClient({ produto }) {
                 }`}
               >
                 <div className="relative aspect-square">
-                  <Image
-                    src={`/img/${produto.pastaImagens}/${n}.png`}
+                  <OtimizadaImagem
+                    src={getImagemProduto(produto, n)}
                     alt={`${produto.nome} — foto ${n}`}
                     fill
                     className="object-cover hover:opacity-75 transition-opacity"
                     sizes="80px"
+                    fallbackSrc="/img/placeholder-produto.png"
                   />
                 </div>
               </button>

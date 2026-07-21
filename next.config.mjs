@@ -18,9 +18,6 @@ const nextConfig = {
   },
   
   // Configurações de performance
-  // (swcMinify removido: a minificação via SWC é o padrão desde o Next 13,
-  // e a chave `swcMinify` foi descontinuada — mantê-la só gera warning de
-  // config não reconhecida no build do Next 16.)
   reactStrictMode: true,
   compress: true,
   

@@ -87,7 +87,7 @@ export default function SucessoClient() {
 
         <div className="bg-tupaGrey border border-tupaWood/30 rounded-lg p-4 text-left space-y-1 text-sm">
           <p className="text-tupaSilver">📧 <span className="text-tupaGold">E-mail de confirmação</span> enviado para seu e-mail.</p>
-          <p className="text-tupaSilver">📦 <span className="text-tupaGold">Prazo de produção:</span> 5 a 10 dias úteis</p>
+          <p className="text-tupaSilver">📦 <span className="text-tupaGold">Prazo de produção:</span> 30 a 60 dias úteis</p>
           <p className="text-tupaSilver">🚚 <span className="text-tupaGold">Entrega:</span> Você receberá o código de rastreio por e-mail.</p>
         </div>
 

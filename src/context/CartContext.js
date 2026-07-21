@@ -28,8 +28,19 @@ export function CartProvider({ children }) {
   }, []);
 
   // 2. Guardar automaticamente sempre que o carrinho for alterado
+  // ✅ CORRIGIDO: Sanitiza os dados antes de salvar
   useEffect(() => {
-    localStorage.setItem('tupa_cart', JSON.stringify(cart));
+    // Sanitiza os dados para garantir consistência
+    const cartSanitizado = cart.map(item => ({
+      id: item.id,
+      nome: item.nome?.substring(0, 100) || 'Produto',
+      preco: Number(item.preco) || 0,
+      quantidade: Math.max(1, Math.min(50, Number(item.quantidade) || 1)),
+      pastaImagens: item.pastaImagens || '',
+      // Remove campos sensíveis ou desnecessários
+    }));
+    
+    localStorage.setItem('tupa_cart', JSON.stringify(cartSanitizado));
   }, [cart]);
 
   // Função para Adicionar ao Carrinho
@@ -41,7 +52,7 @@ export function CartProvider({ children }) {
       if (itemExiste) {
         return prevCart.map((item) =>
           item.id === produto.id 
-            ? { ...item, quantidade: item.quantidade + 1 } 
+            ? { ...item, quantidade: Math.min(item.quantidade + 1, 50) } 
             : item
         );
       }
@@ -49,8 +60,6 @@ export function CartProvider({ children }) {
       // Se não existe, adiciona com quantidade 1
       return [...prevCart, { ...produto, quantidade: 1 }];
     });
-    
-    // Opcional: Podes colocar um alerta aqui como "Adicionado com sucesso!"
   };
 
   // Função para Remover do Carrinho
@@ -61,6 +70,7 @@ export function CartProvider({ children }) {
   // Função para Atualizar a Quantidade (Botões de + e -)
   const updateQuantity = (id, novaQuantidade) => {
     if (novaQuantidade < 1) return; // Impede que a quantidade fique a zero ou negativa
+    if (novaQuantidade > 50) return; // Limite máximo de 50 unidades
     
     setCart((prevCart) =>
       prevCart.map((item) =>

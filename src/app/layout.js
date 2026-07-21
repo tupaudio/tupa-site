@@ -74,9 +74,8 @@ export default function RootLayout({ children }) {
       <body className="min-h-screen flex flex-col bg-tupaBlack">
         <CartProvider>
           <Header />
-          <main className="flex-grow">
-            {children}
-          </main>
+          {/* ✅ CORRIGIDO: Removido <main> daqui para evitar duplicidade com as páginas */}
+          {children}
           <Footer />
         </CartProvider>
       </body>

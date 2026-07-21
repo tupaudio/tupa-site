@@ -1,7 +1,10 @@
+// src/components/AmplifierCard.js
 'use client';
 import { useState, useEffect } from 'react';
-import Link from 'next/link'; // Adicionado
+import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
+import OtimizadaImagem from './OtimizadaImagem';
+import { getImagemProduto } from '@/utils/imagens';
 
 export default function AmplifierCard({ produto }) {
   const { addToCart } = useCart();
@@ -19,13 +22,10 @@ export default function AmplifierCard({ produto }) {
 
   if (!produto) return null;
 
-  const { nome, categoria, descricao, pastaImagens } = produto;
+  const { nome, categoria, descricao } = produto;
   
-  // Convenção única de imagens do projeto: 1.png a 6.png dentro de
-  // /img/<pastaImagens>/ — a mesma usada na página de detalhe do produto.
-  // (Antes este componente usava HeroShot.png/BackPanel.png/etc,
-  // incompatível com a página de detalhe — unificado aqui.)
-  const imagens = ['1.png', '2.png', '3.png', '4.png'];
+  // Total de imagens disponíveis (1.png a 6.png)
+  const totalImagens = 6;
   const [index, setIndex] = useState(0);
 
   const getCor = () => {
@@ -39,7 +39,7 @@ export default function AmplifierCard({ produto }) {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setIndex((prev) => (prev + 1) % imagens.length);
+      setIndex((prev) => (prev + 1) % totalImagens);
     }, 3000);
     return () => clearInterval(timer);
   }, []);
@@ -47,22 +47,22 @@ export default function AmplifierCard({ produto }) {
   return (
     <div className="border border-tupaWood bg-tupaGrey p-6 rounded-lg transition-all hover:border-tupaGold group shadow-lg flex flex-col h-full">
       
-      {/* Container da Imagem (AGORA CLICÁVEL) */}
+      {/* Container da Imagem */}
       <div className="h-64 mb-6 rounded overflow-hidden relative border border-tupaWood/50">
         <Link href={`/loja/${produto.id}`}>
-          <img 
-            src={`/img/${pastaImagens}/${imagens[index]}`} 
-            alt={nome} 
+          <OtimizadaImagem
+            src={getImagemProduto(produto, index + 1)}
+            alt={nome}
+            width={400}
+            height={400}
             className="w-full h-full object-cover transition-all duration-700 ease-in-out cursor-pointer hover:scale-105 hover:opacity-90"
-            onError={(e) => {
-              e.target.onerror = null; // evita loop se o placeholder também faltar
-              e.target.src = '/img/placeholder-produto.png'; // mesmo arquivo usado no checkout (OtimizadaImagem)
-            }}
+            fallbackSrc="/img/placeholder-produto.png"
+            priority={index === 0}
           />
         </Link>
         
         <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-2 pointer-events-none">
-          {imagens.map((_, i) => (
+          {[...Array(totalImagens)].map((_, i) => (
             <div 
               key={i} 
               className={`w-2 h-2 rounded-full transition-colors ${index === i ? 'bg-tupaGold' : 'bg-white/50'}`} 

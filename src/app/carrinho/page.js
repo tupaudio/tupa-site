@@ -1,4 +1,3 @@
-// src/app/carrinho/page.js
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
@@ -82,10 +81,9 @@ export default function CarrinhoPage() {
   const [checkoutIniciado, setCheckoutIniciado] = useState(false);
   const [linkPagamento, setLinkPagamento] = useState('');
   const [extRef, setExtRef] = useState('');
-  // ✅ NOVO: Guarda referência da janela do Mercado Pago
   const [janelaMercadoPago, setJanelaMercadoPago] = useState(null);
 
-  // ✅ CORRIGIDO: Polling com fechamento automático da janela
+  // Polling com fechamento automático da janela
   useEffect(() => {
     if (!checkoutIniciado || !extRef) return;
 
@@ -97,7 +95,6 @@ export default function CarrinhoPage() {
         if (data.status === 'approved') {
           clearInterval(interval);
           
-          // ✅ FECHA A JANELA DO MERCADO PAGO
           if (janelaMercadoPago && !janelaMercadoPago.closed) {
             janelaMercadoPago.close();
           }
@@ -113,11 +110,7 @@ export default function CarrinhoPage() {
     return () => clearInterval(interval);
   }, [checkoutIniciado, extRef, clearCart, janelaMercadoPago]);
 
-  // ============================================================
-  // Busca endereço via ViaCEP com feedback visual + proteção contra
-  // condição de corrida (se o CEP for editado de novo antes da resposta
-  // anterior chegar, a busca antiga é cancelada).
-  // ============================================================
+  // Busca endereço via ViaCEP com proteção contra race condition
   const buscarEnderecoPorCep = async (cepDigitado) => {
     const cepLimpo = cepDigitado.replace(/\D/g, '');
     if (cepLimpo.length !== 8) return;
@@ -156,7 +149,7 @@ export default function CarrinhoPage() {
       }));
 
     } catch (error) {
-      if (error.name === 'AbortError') return; // busca cancelada por uma mais recente
+      if (error.name === 'AbortError') return;
       console.error('Erro ao buscar CEP:', error);
       setErro('Erro ao buscar endereço. Preencha manualmente.');
     } finally {
@@ -171,14 +164,7 @@ export default function CarrinhoPage() {
     return v;
   };
 
-  // ============================================================
-  // Aplica uma máscara sem "jogar" o cursor pro final do campo.
-  // Problema clássico de máscaras feitas com regex simples: ao editar um
-  // dígito no meio do valor (ex.: apagar algo perto do hífen), o cursor
-  // pula para o fim do texto a cada tecla. Aqui, contamos quantos dígitos
-  // existem antes do cursor no valor bruto e reposicionamos o cursor no
-  // mesmo ponto (em dígitos) depois de aplicar a máscara.
-  // ============================================================
+  // Máscara preservando cursor
   const aplicarMascaraPreservandoCursor = (e, aplicarMascara, setValor) => {
     const el = e.target;
     const valorBruto = el.value;
@@ -206,7 +192,7 @@ export default function CarrinhoPage() {
     });
   };
 
-  // Máscara de CPF (000.000.000-00) ou CNPJ (00.000.000/0000-00)
+  // Máscara de CPF/CNPJ
   const aplicarMascaraDoc = (valor) => {
     const digitos = valor.replace(/\D/g, '').slice(0, 14);
     if (digitos.length <= 11) {
@@ -222,7 +208,7 @@ export default function CarrinhoPage() {
       .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
   };
 
-  // Máscara de telefone: (00) 0000-0000 ou (00) 00000-0000
+  // Máscara de telefone
   const aplicarMascaraTelefone = (valor) => {
     const digitos = valor.replace(/\D/g, '').slice(0, 11);
     if (digitos.length <= 10) {
@@ -280,7 +266,7 @@ export default function CarrinhoPage() {
     setPasso(novoPasso);
   };
 
-  // ✅ CORRIGIDO: Salva a referência da janela aberta
+  // ✅ CORRIGIDO: Envolvido em <form> com onSubmit
   const finalizarCompra = async (e) => {
     e.preventDefault();
     setErro('');
@@ -327,7 +313,6 @@ export default function CarrinhoPage() {
       setCheckoutIniciado(true);
       setCarregando(false);
 
-      // ✅ ABRE E SALVA A JANELA
       const novaJanela = window.open(data.init_point, '_blank');
       setJanelaMercadoPago(novaJanela);
       
@@ -352,6 +337,7 @@ export default function CarrinhoPage() {
 
   const campoClasse = "w-full min-w-0 bg-tupaBlack border border-tupaWood rounded px-4 py-2 text-tupaOffWhite placeholder-tupaSilver/50 focus:outline-none focus:border-tupaGold transition-colors";
 
+  // ✅ CORRIGIDO: Removido <main> aninhado
   return (
     <div className="max-w-4xl mx-auto p-6 md:p-10 text-tupaOffWhite space-y-8">
       <h1 className="text-3xl font-serif text-tupaGold uppercase tracking-widest">Checkout</h1>
@@ -652,7 +638,8 @@ export default function CarrinhoPage() {
               </div>
             </div>
           ) : (
-            <div className="bg-tupaGrey border border-tupaWood rounded-lg p-6 space-y-4">
+            // ✅ CORRIGIDO: Envolvido em <form>
+            <form onSubmit={finalizarCompra} className="bg-tupaGrey border border-tupaWood rounded-lg p-6 space-y-4">
               <h2 className="text-tupaGold font-serif text-xl">Revisão do pedido</h2>
 
               <div className="space-y-3">
@@ -710,15 +697,14 @@ export default function CarrinhoPage() {
                   Voltar
                 </button>
                 <button
-                  type="button"
-                  onClick={finalizarCompra}
+                  type="submit"
                   disabled={carregando}
                   className="flex-1 bg-tupaGold text-tupaBlack py-3 rounded font-bold uppercase tracking-widest hover:bg-white transition-colors disabled:opacity-50"
                 >
                   {carregando ? 'Processando...' : 'Finalizar Compra'}
                 </button>
               </div>
-            </div>
+            </form>
           )}
         </div>
       )}

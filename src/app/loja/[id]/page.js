@@ -39,7 +39,11 @@ export async function generateMetadata(props) {
 
   const titulo = `${produto.nome} | Tupã Áudio`;
   const descricao = produto.descricao || 'Amplificador artesanal Tupã Áudio.';
-  const imagem = `/img/${produto.pastaImagens}/1.png`;
+  
+  // ✅ CORRIGIDO: Verifica se pastaImagens existe antes de montar a URL
+  const imagem = produto.pastaImagens 
+    ? `/img/${produto.pastaImagens}/1.png` 
+    : '/img/placeholder-produto.png';
 
   return {
     title: titulo,
@@ -51,7 +55,12 @@ export async function generateMetadata(props) {
       title: titulo,
       description: descricao,
       url: `/loja/${produto.id}`,
-      images: [{ url: imagem, width: 1200, height: 1200, alt: produto.nome }],
+      images: [{ 
+        url: imagem, 
+        width: 1200, 
+        height: 1200, 
+        alt: produto.nome 
+      }],
     },
     twitter: {
       card: 'summary_large_image',
