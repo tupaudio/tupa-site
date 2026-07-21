@@ -1,7 +1,7 @@
 // src/components/OtimizadaImagem.js
 'use client';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function OtimizadaImagem({
   src,
@@ -13,33 +13,48 @@ export default function OtimizadaImagem({
   sizes = '(max-width: 768px) 100vw, 33vw',
   priority = false,
   quality = 85,
+  fallbackSrc = null,
   ...props
 }) {
-  const [erro, setErro] = useState(false);
+  const [tentativaFallback, setTentativaFallback] = useState(false);
+  const [falhouDeVez, setFalhouDeVez] = useState(false);
+
+  // Reseta o estado de erro sempre que a imagem solicitada mudar,
+  // para não "travar" no estado de erro ao reaproveitar o componente
+  // com um item diferente (ex: lista de itens do carrinho).
+  useEffect(() => {
+    setTentativaFallback(false);
+    setFalhouDeVez(false);
+  }, [src]);
 
   const handleError = () => {
-    setErro(true);
+    if (fallbackSrc && !tentativaFallback) {
+      // Primeira falha: tenta a imagem de fallback antes de desistir
+      setTentativaFallback(true);
+    } else {
+      // Fallback também falhou (ou não foi fornecido): desiste de vez
+      setFalhouDeVez(true);
+    }
   };
 
-  // Fallback para imagens não otimizadas
-  if (erro) {
+  if (falhouDeVez) {
     return (
-      <div className={`bg-tupaGrey border border-tupaWood rounded ${className}`}>
-        <div className="w-full h-full flex items-center justify-center text-tupaSilver text-sm">
-          Imagem indisponível
-        </div>
+      <div className={`bg-tupaGrey border border-tupaWood rounded flex items-center justify-center ${className}`}>
+        <span className="text-tupaSilver text-xs text-center px-2">Imagem indisponível</span>
       </div>
     );
   }
 
-  // Se for SVG, usa img normal
-  if (src?.endsWith('.svg')) {
-    return <img src={src} alt={alt} className={className} {...props} />;
+  const srcFinal = tentativaFallback ? fallbackSrc : src;
+
+  // Se for SVG, usa img normal (next/image não otimiza SVG por padrão)
+  if (srcFinal?.endsWith('.svg')) {
+    return <img src={srcFinal} alt={alt} className={className} onError={handleError} />;
   }
 
   return (
     <Image
-      src={src}
+      src={srcFinal}
       alt={alt}
       width={fill ? undefined : width}
       height={fill ? undefined : height}

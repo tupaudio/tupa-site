@@ -52,14 +52,14 @@ export default function SucessoClient() {
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-tupaBlack">
+      <div className="min-h-screen flex items-center justify-center bg-tupaBlack">
         <div className="w-12 h-12 border-4 border-tupaGold border-t-transparent rounded-full animate-spin"></div>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center bg-tupaBlack text-tupaOffWhite p-6">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-tupaBlack text-tupaOffWhite p-6">
       <div className="max-w-lg w-full text-center space-y-6">
         {/* Ícone de sucesso */}
         <div className="w-20 h-20 mx-auto bg-green-500/20 rounded-full flex items-center justify-center">
@@ -100,6 +100,6 @@ export default function SucessoClient() {
           </Link>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

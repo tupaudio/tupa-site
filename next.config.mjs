@@ -1,9 +1,6 @@
 // next.config.mjs
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // ⚡ CRUCIAL: Desabilita otimização de fontes (causa do erro 1101)
-  optimizeFonts: false,
-  
   // Configuração de imagens otimizadas
   images: {
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
@@ -21,8 +18,10 @@ const nextConfig = {
   },
   
   // Configurações de performance
+  // (swcMinify removido: a minificação via SWC é o padrão desde o Next 13,
+  // e a chave `swcMinify` foi descontinuada — mantê-la só gera warning de
+  // config não reconhecida no build do Next 16.)
   reactStrictMode: true,
-  swcMinify: true,
   compress: true,
   
   // Headers para SEO e performance

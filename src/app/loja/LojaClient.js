@@ -16,7 +16,7 @@ export default function LojaClient() {
   );
 
   return (
-    <main className="min-h-screen bg-tupaBlack p-10">
+    <div className="min-h-screen bg-tupaBlack p-10">
       <h1 className="text-4xl font-serif text-tupaGold mb-12 text-center uppercase tracking-widest">
         Vitrine
       </h1>
@@ -54,6 +54,6 @@ export default function LojaClient() {
           />
         ))}
       </div>
-    </main>
+    </div>
   );
 }

@@ -56,7 +56,7 @@ export default function AmplifierCard({ produto }) {
             className="w-full h-full object-cover transition-all duration-700 ease-in-out cursor-pointer hover:scale-105 hover:opacity-90"
             onError={(e) => {
               e.target.onerror = null; // evita loop se o placeholder também faltar
-              e.target.src = '/img/placeholder.png';
+              e.target.src = '/img/placeholder-produto.png'; // mesmo arquivo usado no checkout (OtimizadaImagem)
             }}
           />
         </Link>

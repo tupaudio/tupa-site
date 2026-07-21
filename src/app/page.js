@@ -2,7 +2,7 @@ import { siteData } from '../content/siteData';
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-tupaBlack text-tupaOffWhite p-10">
+    <div className="min-h-screen bg-tupaBlack text-tupaOffWhite p-10">
       {/* Hero */}
       <section className="flex flex-col items-center justify-center py-20 border-b border-tupaGold">
         <h1 className="text-6xl font-serif text-tupaGold mb-4">{siteData.hero.titulo}</h1>
@@ -20,6 +20,6 @@ export default function Home() {
         <h2 className="text-3xl font-serif text-tupaGold mb-6">{siteData.oficina.titulo}</h2>
         <p className="text-lg leading-relaxed text-tupaSilver">{siteData.oficina.descricao}</p>
       </section>
-    </main>
+    </div>
   );
 }

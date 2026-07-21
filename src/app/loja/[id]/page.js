@@ -28,17 +28,36 @@ export default async function ProdutoPage(props) {
 }
 
 export async function generateMetadata(props) {
-  const params = await props.props ? await props.props.params : await props.params;
+  const params = await props.params;
   const id = parseInt(params?.id, 10);
-  
+
   const produto = produtos.find(p => p.id === id);
-  
+
   if (!produto) {
-    return { title: 'Produto não encontrado | Tupã Audio' };
+    return { title: 'Produto não encontrado | Tupã Áudio' };
   }
 
+  const titulo = `${produto.nome} | Tupã Áudio`;
+  const descricao = produto.descricao || 'Amplificador artesanal Tupã Áudio.';
+  const imagem = `/img/${produto.pastaImagens}/1.png`;
+
   return {
-    title: `${produto.nome} | Tupã Audio`,
-    description: produto.descricao || '',
+    title: titulo,
+    description: descricao,
+    alternates: {
+      canonical: `/loja/${produto.id}`,
+    },
+    openGraph: {
+      title: titulo,
+      description: descricao,
+      url: `/loja/${produto.id}`,
+      images: [{ url: imagem, width: 1200, height: 1200, alt: produto.nome }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: titulo,
+      description: descricao,
+      images: [imagem],
+    },
   };
 }

@@ -50,7 +50,7 @@ function ProjetoCard({ projeto, index }) {
 
 export default function ProjetosClient() {
   return (
-    <main className="max-w-6xl mx-auto p-10 space-y-24 text-tupaOffWhite">
+    <div className="max-w-6xl mx-auto p-10 space-y-24 text-tupaOffWhite">
       <h1 className="text-4xl font-serif text-tupaGold text-center uppercase tracking-widest mb-16">
         Nossos Projetos
       </h1>
@@ -58,6 +58,6 @@ export default function ProjetosClient() {
       {projetos.map((projeto, index) => (
         <ProjetoCard key={projeto.id} projeto={projeto} index={index} />
       ))}
-    </main>
+    </div>
   );
 }

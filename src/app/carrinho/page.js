@@ -1,6 +1,6 @@
 // src/app/carrinho/page.js
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
 import CalculadoraFrete from '@/components/CalculadoraFrete';
@@ -73,6 +73,10 @@ export default function CarrinhoPage() {
   const [erro, setErro] = useState('');
   const [buscandoCep, setBuscandoCep] = useState(false);
   const [termos, setTermos] = useState(false);
+  const cepAbortRef = useRef(null);
+  const cepInputRef = useRef(null);
+  const docInputRef = useRef(null);
+  const telefoneInputRef = useRef(null);
 
   // Estados para monitoramento assíncrono do checkout externo
   const [checkoutIniciado, setCheckoutIniciado] = useState(false);
@@ -110,19 +114,27 @@ export default function CarrinhoPage() {
   }, [checkoutIniciado, extRef, clearCart, janelaMercadoPago]);
 
   // ============================================================
-  // FUNÇÃO CORRIGIDA: Busca endereço via ViaCEP com feedback visual
+  // Busca endereço via ViaCEP com feedback visual + proteção contra
+  // condição de corrida (se o CEP for editado de novo antes da resposta
+  // anterior chegar, a busca antiga é cancelada).
   // ============================================================
   const buscarEnderecoPorCep = async (cepDigitado) => {
     const cepLimpo = cepDigitado.replace(/\D/g, '');
     if (cepLimpo.length !== 8) return;
 
+    if (cepAbortRef.current) cepAbortRef.current.abort();
+    const controller = new AbortController();
+    cepAbortRef.current = controller;
+
     setBuscandoCep(true);
     setErro('');
-    
+
     try {
-      const res = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+      const res = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`, {
+        signal: controller.signal,
+      });
       const data = await res.json();
-      
+
       if (data.erro) {
         setErro('CEP não encontrado. Verifique o número digitado.');
         setEndereco((prev) => ({
@@ -134,7 +146,7 @@ export default function CarrinhoPage() {
         }));
         return;
       }
-      
+
       setEndereco((prev) => ({
         ...prev,
         rua: data.logradouro || '',
@@ -142,13 +154,56 @@ export default function CarrinhoPage() {
         cidade: data.localidade || '',
         uf: data.uf || '',
       }));
-      
+
     } catch (error) {
+      if (error.name === 'AbortError') return; // busca cancelada por uma mais recente
       console.error('Erro ao buscar CEP:', error);
       setErro('Erro ao buscar endereço. Preencha manualmente.');
     } finally {
-      setBuscandoCep(false);
+      if (cepAbortRef.current === controller) setBuscandoCep(false);
     }
+  };
+
+  // Máscara de CEP: 00000-000
+  const aplicarMascaraCep = (valor) => {
+    let v = valor.replace(/\D/g, '').slice(0, 8);
+    if (v.length > 5) v = v.slice(0, 5) + '-' + v.slice(5);
+    return v;
+  };
+
+  // ============================================================
+  // Aplica uma máscara sem "jogar" o cursor pro final do campo.
+  // Problema clássico de máscaras feitas com regex simples: ao editar um
+  // dígito no meio do valor (ex.: apagar algo perto do hífen), o cursor
+  // pula para o fim do texto a cada tecla. Aqui, contamos quantos dígitos
+  // existem antes do cursor no valor bruto e reposicionamos o cursor no
+  // mesmo ponto (em dígitos) depois de aplicar a máscara.
+  // ============================================================
+  const aplicarMascaraPreservandoCursor = (e, aplicarMascara, setValor) => {
+    const el = e.target;
+    const valorBruto = el.value;
+    const cursorPos = el.selectionStart ?? valorBruto.length;
+    const digitosAntesDoCursor = valorBruto.slice(0, cursorPos).replace(/\D/g, '').length;
+
+    const novoValor = aplicarMascara(valorBruto);
+    setValor(novoValor);
+
+    requestAnimationFrame(() => {
+      if (!el) return;
+      let contados = 0;
+      let novaPos = novoValor.length;
+      for (let i = 0; i < novoValor.length; i++) {
+        if (/\d/.test(novoValor[i])) {
+          contados++;
+          if (contados === digitosAntesDoCursor) {
+            novaPos = i + 1;
+            break;
+          }
+        }
+      }
+      if (digitosAntesDoCursor === 0) novaPos = 0;
+      el.setSelectionRange(novaPos, novaPos);
+    });
   };
 
   // Máscara de CPF (000.000.000-00) ou CNPJ (00.000.000/0000-00)
@@ -286,19 +341,19 @@ export default function CarrinhoPage() {
 
   if (cart.length === 0) {
     return (
-      <main className="min-h-screen flex flex-col items-center justify-center text-tupaOffWhite p-10">
+      <div className="min-h-screen flex flex-col items-center justify-center text-tupaOffWhite p-10">
         <h1 className="text-3xl font-serif text-tupaGold mb-4">Seu carrinho está vazio</h1>
         <Link href="/loja" className="bg-tupaGold text-tupaBlack px-6 py-3 rounded font-bold hover:bg-white transition-colors">
           Ver amplificadores
         </Link>
-      </main>
+      </div>
     );
   }
 
   const campoClasse = "w-full min-w-0 bg-tupaBlack border border-tupaWood rounded px-4 py-2 text-tupaOffWhite placeholder-tupaSilver/50 focus:outline-none focus:border-tupaGold transition-colors";
 
   return (
-    <main className="max-w-4xl mx-auto p-6 md:p-10 text-tupaOffWhite space-y-8">
+    <div className="max-w-4xl mx-auto p-6 md:p-10 text-tupaOffWhite space-y-8">
       <h1 className="text-3xl font-serif text-tupaGold uppercase tracking-widest">Checkout</h1>
 
       {/* Stepper */}
@@ -368,23 +423,26 @@ export default function CarrinhoPage() {
               className={campoClasse}
             />
             <input
+              ref={docInputRef}
               required
               type="text"
+              inputMode="numeric"
               placeholder="CPF / CNPJ (para nota fiscal) *"
               value={doc}
-              onChange={(e) => setDoc(aplicarMascaraDoc(e.target.value))}
+              onChange={(e) => aplicarMascaraPreservandoCursor(e, aplicarMascaraDoc, setDoc)}
               className={campoClasse}
             />
             <input
+              ref={telefoneInputRef}
               type="tel"
               placeholder="Telefone / WhatsApp"
               value={telefone}
-              onChange={(e) => setTelefone(aplicarMascaraTelefone(e.target.value))}
+              onChange={(e) => aplicarMascaraPreservandoCursor(e, aplicarMascaraTelefone, setTelefone)}
               className={campoClasse}
             />
           </div>
 
-          {erro && <p className="text-red-400 text-sm font-bold">{erro}</p>}
+          {erro && <p className="text-red-400 text-sm font-bold" role="alert" aria-live="assertive">{erro}</p>}
 
           <button
             type="button"
@@ -411,20 +469,40 @@ export default function CarrinhoPage() {
             <p className="text-tupaSilver text-xs">Campos com * são obrigatórios.</p>
 
             <div className="grid sm:grid-cols-3 gap-4">
-              <input
-                required
-                type="text"
-                placeholder={buscandoCep ? 'Buscando endereço...' : 'CEP *'}
-                maxLength={9}
-                value={endereco.cep}
-                onChange={(e) => {
-                  let v = e.target.value.replace(/\D/g, '').slice(0, 8);
-                  if (v.length > 5) v = v.slice(0, 5) + '-' + v.slice(5);
-                  setEndereco({ ...endereco, cep: v });
-                  if (v.replace(/\D/g, '').length === 8) buscarEnderecoPorCep(v);
-                }}
-                className={campoClasse}
-              />
+              <div className="relative">
+                <input
+                  ref={cepInputRef}
+                  required
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="CEP *"
+                  maxLength={9}
+                  value={endereco.cep}
+                  aria-busy={buscandoCep}
+                  aria-describedby="cep-status"
+                  onChange={(e) => {
+                    aplicarMascaraPreservandoCursor(
+                      e,
+                      aplicarMascaraCep,
+                      (novoValor) => {
+                        setEndereco((prev) => ({ ...prev, cep: novoValor }));
+                        if (novoValor.replace(/\D/g, '').length === 8) buscarEnderecoPorCep(novoValor);
+                      }
+                    );
+                  }}
+                  className={`${campoClasse} pr-9`}
+                />
+                {buscandoCep && (
+                  <div
+                    className="absolute right-3 top-1/2 -translate-y-1/2"
+                    role="status"
+                    id="cep-status"
+                  >
+                    <div className="w-4 h-4 border-2 border-tupaGold border-t-transparent rounded-full animate-spin" />
+                    <span className="sr-only">Buscando endereço...</span>
+                  </div>
+                )}
+              </div>
               <input
                 required
                 type="text"
@@ -475,7 +553,7 @@ export default function CarrinhoPage() {
             </div>
 
             <div className="pt-4 border-t border-tupaWood/30">
-              <CalculadoraFrete itens={cart} onSelecionar={setFrete} />
+              <CalculadoraFrete itens={cart} onSelecionar={setFrete} cepInicial={endereco.cep} />
               {frete && (
                 <div className="flex justify-between text-sm text-tupaSilver mt-2">
                   <span>Frete selecionado:</span>
@@ -505,7 +583,7 @@ export default function CarrinhoPage() {
               </label>
             </div>
 
-            {erro && <p className="text-red-400 text-sm font-bold">{erro}</p>}
+            {erro && <p className="text-red-400 text-sm font-bold" role="alert" aria-live="assertive">{erro}</p>}
 
             <div className="flex gap-4">
               <button
@@ -555,6 +633,23 @@ export default function CarrinhoPage() {
                   Abrir ambiente de pagamento novamente
                 </a>
               </div>
+
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (janelaMercadoPago && !janelaMercadoPago.closed) {
+                      janelaMercadoPago.close();
+                    }
+                    setCheckoutIniciado(false);
+                    setLinkPagamento('');
+                    setExtRef('');
+                  }}
+                  className="text-xs text-tupaSilver underline hover:text-tupaGold transition-colors"
+                >
+                  Cancelar e voltar para a revisão do pedido
+                </button>
+              </div>
             </div>
           ) : (
             <div className="bg-tupaGrey border border-tupaWood rounded-lg p-6 space-y-4">
@@ -564,7 +659,7 @@ export default function CarrinhoPage() {
                 {cart.map((item) => (
                   <div key={item.id} className="flex items-center gap-4 border-b border-tupaWood/30 pb-3 last:border-0 last:pb-0">
                     <OtimizadaImagem
-                      src={`/img/${item.pastaImagens}/1.png`}
+                      src={item.pastaImagens ? `/img/${item.pastaImagens}/1.png` : '/img/placeholder-produto.png'}
                       alt={item.nome}
                       width={50}
                       height={50}
@@ -604,7 +699,7 @@ export default function CarrinhoPage() {
                 <p className="text-tupaSilver"><span className="text-tupaGold">Entrega:</span> {endereco.rua}, {endereco.numero} {endereco.complemento ? `- ${endereco.complemento}` : ''}, {endereco.bairro} - {endereco.cidade}/{endereco.uf}, CEP: {endereco.cep}</p>
               </div>
 
-              {erro && <p className="text-red-400 text-sm font-bold">{erro}</p>}
+              {erro && <p className="text-red-400 text-sm font-bold" role="alert" aria-live="assertive">{erro}</p>}
 
               <div className="flex gap-4">
                 <button
@@ -615,7 +710,7 @@ export default function CarrinhoPage() {
                   Voltar
                 </button>
                 <button
-                  type="submit"
+                  type="button"
                   onClick={finalizarCompra}
                   disabled={carregando}
                   className="flex-1 bg-tupaGold text-tupaBlack py-3 rounded font-bold uppercase tracking-widest hover:bg-white transition-colors disabled:opacity-50"
@@ -627,6 +722,6 @@ export default function CarrinhoPage() {
           )}
         </div>
       )}
-    </main>
+    </div>
   );
 }

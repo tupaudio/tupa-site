@@ -5,7 +5,7 @@ export const metadata = {
 
 export default function PrivacidadePage() {
   return (
-    <main className="max-w-4xl mx-auto p-10 min-h-screen">
+    <div className="max-w-4xl mx-auto p-10 min-h-screen">
       <h1 className="text-4xl font-serif text-tupaGold mb-12 text-center uppercase tracking-widest">
         Política de Privacidade
       </h1>
@@ -25,6 +25,6 @@ export default function PrivacidadePage() {
           Esta é uma loja segura e utiliza a tecnologia de Cookies apenas para proporcionar mais facilidade no momento de sua compra. O objetivo dos Cookies é customizar ao máximo sua navegação no site, permitindo maior facilidade e agilidade no processo de pesquisa e finalização de pedido.
         </p>
       </div>
-    </main>
+    </div>
   );
 }

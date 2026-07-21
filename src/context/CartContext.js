@@ -12,9 +12,17 @@ export function CartProvider({ children }) {
     const savedCart = localStorage.getItem('tupa_cart');
     if (savedCart) {
       try {
-        setCart(JSON.parse(savedCart));
+        const parsed = JSON.parse(savedCart);
+        // Descarta itens de formato antigo/corrompido (ex.: salvos antes de
+        // uma mudança na convenção de campos/imagens do produto), para não
+        // quebrar o checkout com dados obsoletos.
+        const cartValido = Array.isArray(parsed)
+          ? parsed.filter((item) => item && item.id != null && item.nome && item.preco != null)
+          : [];
+        setCart(cartValido);
       } catch (error) {
         console.error('Erro ao carregar o carrinho', error);
+        localStorage.removeItem('tupa_cart');
       }
     }
   }, []);

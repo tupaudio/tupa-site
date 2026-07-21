@@ -21,7 +21,7 @@ const secoes = [
 
 export default function Bancada() {
   return (
-    <main className="max-w-6xl mx-auto p-10 space-y-20 text-tupaOffWhite">
+    <div className="max-w-6xl mx-auto p-10 space-y-20 text-tupaOffWhite">
       <h1 className="text-4xl font-serif text-tupaGold text-center uppercase tracking-widest mb-10">
         A Bancada
       </h1>
@@ -45,6 +45,6 @@ export default function Bancada() {
           </div>
         </section>
       ))}
-    </main>
+    </div>
   );
 }

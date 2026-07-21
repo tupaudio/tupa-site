@@ -10,7 +10,9 @@ export default async function sitemap() {
     '/bancada',
     '/projetos',
     '/personalizar',
-    '/carrinho',
+    // '/carrinho' foi removido do sitemap de propósito: a página tem
+    // `robots: 'noindex'` (src/app/carrinho/metadata.js), então listá-la
+    // aqui só desperdiça crawl budget com uma URL que nunca será indexada.
     '/politicas/trocas',
     '/politicas/prazos',
     '/politicas/privacidade',

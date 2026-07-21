@@ -38,7 +38,7 @@ export default function Personalizar() {
   };
 
   return (
-    <main className="min-h-screen bg-tupaBlack text-tupaOffWhite p-10">
+    <div className="min-h-screen bg-tupaBlack text-tupaOffWhite p-10">
       <div className="max-w-2xl mx-auto border border-tupaWood p-8 rounded-lg shadow-xl">
         <h1 className="text-3xl font-serif text-tupaGold mb-6 text-center">Personalize o seu</h1>
         
@@ -83,6 +83,6 @@ export default function Personalizar() {
           </button>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

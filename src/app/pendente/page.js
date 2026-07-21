@@ -61,7 +61,7 @@ function PendenteConteudo() {
   const cansouDeEsperar = tentativas > 40; // ~2 minutos
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-10 text-center">
+    <div className="min-h-screen flex flex-col items-center justify-center p-10 text-center">
       <div className="bg-tupaGrey border border-tupaWood rounded-lg p-8 max-w-md w-full">
         <h1 className="text-4xl font-serif text-tupaGold mb-6">Pagamento em Análise</h1>
         
@@ -130,16 +130,16 @@ function PendenteConteudo() {
           </>
         )}
       </div>
-    </main>
+    </div>
   );
 }
 
 export default function Pendente() {
   return (
     <Suspense fallback={
-      <main className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-tupaGold">Carregando...</div>
-      </main>
+      </div>
     }>
       <PendenteConteudo />
     </Suspense>

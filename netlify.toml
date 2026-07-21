@@ -1,3 +1,10 @@
+# ⚠️ ATENÇÃO: o projeto também tem wrangler.jsonc + open-next.config.ts
+# configurados com o domínio de produção real (www.tupaaudio.com.br) apontando
+# para Cloudflare Workers. Ter dois pipelines de deploy configurados ao mesmo
+# tempo é uma fonte comum de bugs "funciona local, quebra em produção"
+# (headers, variáveis de ambiente e otimização de imagem se comportam
+# diferente em cada plataforma). Se o Cloudflare é o alvo real de produção,
+# considere remover este arquivo e a dependência @netlify/plugin-nextjs.
 [build]
   command = "npm run build"
  

@@ -5,7 +5,7 @@ export const metadata = {
 
 export default function TrocasPage() {
   return (
-    <main className="max-w-4xl mx-auto p-10 min-h-screen">
+    <div className="max-w-4xl mx-auto p-10 min-h-screen">
       <h1 className="text-4xl font-serif text-tupaGold mb-12 text-center uppercase tracking-widest">
         Trocas e Devoluções
       </h1>
@@ -31,6 +31,6 @@ export default function TrocasPage() {
           <li>Para iniciar o processo de suporte, entre em contato com nossa bancada via WhatsApp <a href="https://wa.me/5527999563227" target="_blank" rel="noopener noreferrer" className="text-tupaGold font-bold hover:underline">(27) 99956-3227</a> ou e-mail <a href="mailto:tupaaudio@outlook.com" className="text-tupaGold font-bold hover:underline">tupaaudio@outlook.com</a>.</li>
         </ul>
       </div>
-    </main>
+    </div>
   );
 }

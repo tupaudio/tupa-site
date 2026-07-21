@@ -1,10 +1,18 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
-// 1. Recebe 'itens' (array) e, opcionalmente, 'onSelecionar' — usado pela
-//    página do carrinho pra saber qual frete o cliente escolheu e somar no total.
-export default function CalculadoraFrete({ itens, onSelecionar }) {
-  const [cep, setCep] = useState('');
+// 1. Recebe 'itens' (array), opcionalmente 'onSelecionar' — usado pela
+//    página do carrinho pra saber qual frete o cliente escolheu e somar no
+//    total — e opcionalmente 'cepInicial', para reaproveitar o CEP já
+//    digitado no bloco de endereço em vez de pedir pro cliente digitar de novo.
+export default function CalculadoraFrete({ itens, onSelecionar, cepInicial = '' }) {
+  const [cep, setCep] = useState(cepInicial);
+
+  // Mantém sincronizado se o CEP do endereço mudar depois de montado
+  // (ex.: cliente corrige o CEP no bloco de endereço).
+  useEffect(() => {
+    if (cepInicial) setCep(cepInicial);
+  }, [cepInicial]);
   const [loading, setLoading] = useState(false);
   const [opcoes, setOpcoes] = useState(null);
   const [selecionada, setSelecionada] = useState(null);

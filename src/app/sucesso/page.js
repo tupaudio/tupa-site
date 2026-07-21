@@ -7,9 +7,9 @@ export const dynamic = 'force-dynamic';
 export default function SucessoPage() {
   return (
     <Suspense fallback={
-      <main className="min-h-screen flex items-center justify-center bg-tupaBlack">
+      <div className="min-h-screen flex items-center justify-center bg-tupaBlack">
         <div className="w-12 h-12 border-4 border-tupaGold border-t-transparent rounded-full animate-spin"></div>
-      </main>
+      </div>
     }>
       <SucessoClient />
     </Suspense>

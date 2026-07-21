@@ -33,7 +33,7 @@ export default function DetalheProdutoClient({ produto }) {
   };
 
   return (
-    <main className="max-w-6xl mx-auto p-6 md:p-10">
+    <div className="max-w-6xl mx-auto p-6 md:p-10">
       {/* Breadcrumb para SEO e UX */}
       <nav className="text-sm text-tupaSilver mb-6" aria-label="Breadcrumb">
         <ol className="flex flex-wrap items-center gap-2">
@@ -172,6 +172,6 @@ export default function DetalheProdutoClient({ produto }) {
           </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

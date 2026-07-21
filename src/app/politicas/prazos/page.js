@@ -5,7 +5,7 @@ export const metadata = {
 
 export default function PrazosPage() {
   return (
-    <main className="max-w-4xl mx-auto p-10 min-h-screen">
+    <div className="max-w-4xl mx-auto p-10 min-h-screen">
       <h1 className="text-4xl font-serif text-tupaGold mb-12 text-center uppercase tracking-widest">
         Prazos e Entrega
       </h1>
@@ -27,6 +27,6 @@ export default function PrazosPage() {
           Se precisar de mais informações ou tiver qualquer problema com a sua entrega, contate-nos imediatamente pelo WhatsApp <a href="https://wa.me/5527999563227" target="_blank" rel="noopener noreferrer" className="text-tupaGold font-bold hover:underline">(27) 99956-3227</a> ou pelo e-mail <a href="mailto:tupaaudio@outlook.com" className="text-tupaGold font-bold hover:underline">tupaaudio@outlook.com</a>.
         </p>
       </div>
-    </main>
+    </div>
   );
 }

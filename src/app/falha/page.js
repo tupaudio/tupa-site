@@ -1,6 +1,6 @@
 export default function Falha() {
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-10 text-center">
+    <div className="min-h-screen flex flex-col items-center justify-center p-10 text-center">
       <h1 className="text-4xl font-serif text-red-600 mb-6">Algo deu errado.</h1>
       <p className="text-tupaOffWhite mb-8 max-w-md">
         Não conseguimos processar o pagamento neste momento. Não se preocupe, nenhum valor foi debitado.
@@ -13,6 +13,6 @@ export default function Falha() {
           Voltar ao Início
         </a>
       </div>
-    </main>
+    </div>
   );
 }

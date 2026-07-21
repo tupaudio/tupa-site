@@ -7,7 +7,7 @@ export default async function DetalheProjeto({ params }) {
   if (!projeto) notFound();
 
   return (
-    <main className="max-w-4xl mx-auto p-10 text-tupaOffWhite">
+    <div className="max-w-4xl mx-auto p-10 text-tupaOffWhite">
       <h1 className="text-4xl font-serif text-tupaGold mb-2">{projeto.nome}</h1>
       <p className="text-lg text-tupaSilver mb-8 italic">{projeto.categoria}</p>
       
@@ -35,6 +35,6 @@ export default async function DetalheProjeto({ params }) {
           </ul>
         </section>
       </div>
-    </main>
+    </div>
   );
 }

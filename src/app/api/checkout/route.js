@@ -2,6 +2,53 @@
 import { NextResponse } from 'next/server';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { randomUUID } from 'crypto';
+import { produtos } from '@/data/produtos';
+
+// Limite de sanidade para a linha de frete (não temos, hoje, uma forma de
+// revalidar o valor exato do frete no servidor sem re-chamar o Melhor Envio
+// com o mesmo CEP/itens — então blindamos com um teto alto em vez de confiar
+// cegamente no valor enviado pelo cliente).
+const FRETE_VALOR_MAXIMO = 500;
+
+// ⚠️ SEGURANÇA: nunca confiar no preço enviado pelo cliente.
+// Recalcula cada item do carrinho a partir do catálogo (fonte da verdade),
+// para impedir que alguém edite o localStorage / intercepte o fetch e
+// finalize a compra com um preço arbitrário.
+function revalidarItens(itemsRecebidos) {
+  const itensValidados = [];
+
+  for (const item of itemsRecebidos) {
+    const quantidade = Math.max(1, Math.min(50, Number(item.quantidade) || 1));
+
+    // Linha de frete: não tem id de produto. Aceita, mas com teto de valor.
+    const ehFrete = typeof item.nome === 'string' && item.nome.startsWith('Frete');
+    if (ehFrete) {
+      const valorFrete = Math.max(0, Math.min(FRETE_VALOR_MAXIMO, Number(item.preco) || 0));
+      itensValidados.push({
+        title: String(item.nome).substring(0, 256),
+        unit_price: valorFrete,
+        quantity: 1,
+        currency_id: 'BRL',
+      });
+      continue;
+    }
+
+    // Item de produto: o preço SEMPRE vem do catálogo, nunca do cliente.
+    const produto = produtos.find((p) => String(p.id) === String(item.id));
+    if (!produto) {
+      throw new Error(`Produto inválido no carrinho (id: ${item.id}).`);
+    }
+
+    itensValidados.push({
+      title: produto.nome.substring(0, 256),
+      unit_price: Number(produto.preco),
+      quantity: quantidade,
+      currency_id: 'BRL',
+    });
+  }
+
+  return itensValidados;
+}
 
 export async function POST(req) {
   try {
@@ -28,6 +75,14 @@ export async function POST(req) {
       );
     }
 
+    // 2.1 Revalida preços contra o catálogo ANTES de montar a preferência
+    let itensValidados;
+    try {
+      itensValidados = revalidarItens(items);
+    } catch (err) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
+
     const preference = new Preference(client);
     const baseUrl = (process.env.SITE_URL || 'http://localhost:3000').replace(/\/+$/, '');
     const externalReference = randomUUID();
@@ -50,14 +105,10 @@ export async function POST(req) {
       // Se não for CPF nem CNPJ, não envia identificação
     }
 
-    // 4. Montagem do Corpo da Preferência
+    // 4. Montagem do Corpo da Preferência (usa os itens já revalidados,
+    //    nunca os valores brutos enviados pelo cliente)
     const corpo = {
-      items: items.map(item => ({
-        title: item.nome.substring(0, 256),
-        unit_price: Number(item.preco),
-        quantity: Math.max(1, item.quantidade || 1),
-        currency_id: 'BRL',
-      })),
+      items: itensValidados,
       payer: {
         name: cliente.nome.trim().substring(0, 256),
         email: cliente.email.trim().substring(0, 256),
