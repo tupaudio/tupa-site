@@ -1,8 +1,8 @@
 export const siteData = {
   nome: "Tupã Áudio",
   hero: {
-    titulo: "Tupã Áudio",
-    subtitulo: "Engenharia Brasileira de Alta Gama"
+    titulo: "Tupã Áudio",       // mantido para SEO/título da aba
+    subtitulo: "Engenharia Brasileira, artesanal e com alma!"
   },
   manifesto: {
     titulo: "Por que Tupã?",

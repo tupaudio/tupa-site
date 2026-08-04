@@ -26,10 +26,16 @@ export default function Header() {
     <header className="border-b border-tupaGold bg-tupaBlack text-tupaOffWhite">
       <div className="flex items-center justify-between px-6 py-4">
 
-        {/* Logo */}
-        <div className="text-2xl font-serif text-tupaGold tracking-widest uppercase shrink-0">
-          <Link href="/" onClick={() => setMenuAberto(false)}>Tupã Áudio</Link>
-        </div>
+                  {/* Logo */}
+          <div className="shrink-0">
+          3  <Link href="/" onClick={() => setMenuAberto(false)}>
+          4    <img
+          5      src="/img/logo.png"
+          6      alt="Tupã Áudio"
+          7      className="h-8 w-auto"
+          8    />
+          9  </Link>
+          10</div>
 
         {/* Navegação desktop */}
         <nav className="hidden md:flex gap-6 items-center">

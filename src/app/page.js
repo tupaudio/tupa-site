@@ -1,11 +1,20 @@
 import { siteData } from '../content/siteData';
+import Image from 'next/image';
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-tupaBlack text-tupaOffWhite p-10">
       {/* Hero */}
       <section className="flex flex-col items-center justify-center py-20 border-b border-tupaGold">
-        <h1 className="text-6xl font-serif text-tupaGold mb-4">{siteData.hero.titulo}</h1>
+        {/* Logo com since 2026 no lugar do título de texto */}
+        <Image
+          src="/img/logo-since.svg"
+          alt="Tupã Áudio — since 2026"
+          width={400}
+          height={160}
+          className="mb-4 w-64 sm:w-80 md:w-96 h-auto"
+          priority
+        />
         <p className="text-tupaSilver text-xl">{siteData.hero.subtitulo}</p>
       </section>
 
