@@ -599,10 +599,25 @@ export default function CarrinhoPage() {
               <h2 className="text-tupaGold font-serif text-2xl tracking-wide animate-pulse">
                 Aguardando Pagamento...
               </h2>
-              <p className="text-tupaSilver text-sm max-w-md mx-auto">
-                Uma aba externa e segura do Mercado Pago foi inicializada para você efetuar a transação via Pix ou Cartão.
-                Assim que processado com sucesso, esta janela redirecionará você automaticamente.
-              </p>
+              // ✅ NOVO — orienta claramente o cliente PIX a fechar a aba
+                  <div className="space-y-3 max-w-md mx-auto">
+                    <p className="text-tupaSilver text-sm">
+                      Uma aba segura do Mercado Pago foi aberta para você efetuar o pagamento.
+                    </p>
+                    <div className="bg-tupaBlack border border-tupaGold/40 rounded-lg p-4 text-left space-y-2">
+                      <p className="text-tupaGold text-xs font-bold uppercase tracking-widest">Pagando via PIX?</p>
+                      <ol className="text-tupaSilver text-sm space-y-1 list-decimal list-inside">
+                        <li>Escaneie o QR Code ou copie a chave na aba do Mercado Pago</li>
+                        <li>Efetue o pagamento no seu banco</li>
+                        <li>Feche a aba do Mercado Pago manualmente</li>
+                        <li>Esta página confirmará o pedido automaticamente ✅</li>
+                      </ol>
+                    </div>
+                    <p className="text-tupaSilver/60 text-xs">
+                      Pagando com cartão? A confirmação é imediata e a aba fecha automaticamente.
+                    </p>
+                  </div>
+
               
               <div className="py-4">
                 <div className="w-8 h-8 border-4 border-tupaGold border-t-transparent rounded-full animate-spin mx-auto"></div>

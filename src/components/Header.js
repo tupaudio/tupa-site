@@ -6,59 +6,93 @@ import { useState, useEffect } from 'react';
 
 export default function Header() {
   const [mounted, setMounted] = useState(false);
+  const [menuAberto, setMenuAberto] = useState(false);
   const context = useCart();
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Segurança: se não estiver montado ou não tiver contexto, mostra vazio
-  if (!mounted || !context) {
-    return (
-      <header className="flex items-center justify-between p-6 border-b border-tupaGold bg-tupaBlack text-tupaOffWhite">
-        <div className="text-2xl font-serif text-tupaGold tracking-widest uppercase">
-          <Link href="/">Tupã Áudio</Link>
+  const cart = (mounted && context?.cart) ? context.cart : [];
+
+  const links = [
+    { href: '/',            label: 'Início' },
+    { href: '/loja',        label: 'Loja' },
+    { href: '/projetos',    label: 'Projetos' },
+    { href: '/bancada',     label: 'A Bancada' },
+  ];
+
+  return (
+    <header className="border-b border-tupaGold bg-tupaBlack text-tupaOffWhite">
+      <div className="flex items-center justify-between px-6 py-4">
+
+        {/* Logo */}
+        <div className="text-2xl font-serif text-tupaGold tracking-widest uppercase shrink-0">
+          <Link href="/" onClick={() => setMenuAberto(false)}>Tupã Áudio</Link>
         </div>
-        <nav className="flex gap-8 items-center">
-          <Link href="/" className="hover:text-tupaGold transition-colors">Início</Link>
-          <Link href="/loja" className="hover:text-tupaGold transition-colors">Loja</Link>
-          <Link href="/projetos" className="hover:text-tupaGold transition-colors">Projetos</Link>
-          <Link href="/bancada" className="hover:text-tupaGold transition-colors">A Bancada</Link>
+
+        {/* Navegação desktop */}
+        <nav className="hidden md:flex gap-6 items-center">
+          {links.map(l => (
+            <Link key={l.href} href={l.href} className="hover:text-tupaGold transition-colors">
+              {l.label}
+            </Link>
+          ))}
           <Link href="/personalizar" className="bg-tupaGold text-tupaBlack px-4 py-1 rounded hover:bg-white transition-all font-bold uppercase text-sm">
             Personalize o seu!
           </Link>
           <Link href="/carrinho" className="border border-tupaGold px-3 py-1 rounded hover:bg-tupaGold hover:text-tupaBlack transition-all">
-            Carrinho
+            Carrinho {cart.length > 0 && `(${cart.length})`}
           </Link>
         </nav>
-      </header>
-    );
-  }
 
-  const cart = context.cart || [];
-
-  return (
-    <header className="flex items-center justify-between p-6 border-b border-tupaGold bg-tupaBlack text-tupaOffWhite">
-      {/* Logo */}
-      <div className="text-2xl font-serif text-tupaGold tracking-widest uppercase">
-        <Link href="/">Tupã Áudio</Link>
+        {/* Botões mobile: carrinho + hambúrguer */}
+        <div className="flex md:hidden items-center gap-3">
+          <Link href="/carrinho" className="border border-tupaGold px-3 py-1 rounded text-sm hover:bg-tupaGold hover:text-tupaBlack transition-all">
+            Carrinho {cart.length > 0 && `(${cart.length})`}
+          </Link>
+          <button
+            onClick={() => setMenuAberto(!menuAberto)}
+            aria-label="Menu"
+            className="border border-tupaGold p-2 rounded hover:bg-tupaGold hover:text-tupaBlack transition-all"
+          >
+            {menuAberto ? (
+              // X para fechar
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            ) : (
+              // Hambúrguer
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+              </svg>
+            )}
+          </button>
+        </div>
       </div>
 
-      {/* Navegação Consolidada */}
-      <nav className="flex gap-8 items-center">
-        <Link href="/" className="hover:text-tupaGold transition-colors">Início</Link>
-        <Link href="/loja" className="hover:text-tupaGold transition-colors">Loja</Link>
-        <Link href="/projetos" className="hover:text-tupaGold transition-colors">Projetos</Link>
-        <Link href="/bancada" className="hover:text-tupaGold transition-colors">A Bancada</Link>
-        <Link href="/personalizar" className="bg-tupaGold text-tupaBlack px-4 py-1 rounded hover:bg-white transition-all font-bold uppercase text-sm">
-          Personalize o seu!
-        </Link>
-        
-        {/* Carrinho */}
-        <Link href="/carrinho" className="relative border border-tupaGold px-3 py-1 rounded hover:bg-tupaGold hover:text-tupaBlack transition-all">
-          Carrinho {cart.length > 0 && `(${cart.length})`}
-        </Link>
-      </nav>
+      {/* Menu mobile expandido */}
+      {menuAberto && (
+        <nav className="md:hidden flex flex-col border-t border-tupaGold/30 px-6 py-4 gap-4">
+          {links.map(l => (
+            <Link
+              key={l.href}
+              href={l.href}
+              onClick={() => setMenuAberto(false)}
+              className="hover:text-tupaGold transition-colors py-1"
+            >
+              {l.label}
+            </Link>
+          ))}
+          <Link
+            href="/personalizar"
+            onClick={() => setMenuAberto(false)}
+            className="bg-tupaGold text-tupaBlack px-4 py-2 rounded text-center font-bold uppercase text-sm hover:bg-white transition-all"
+          >
+            Personalize o seu!
+          </Link>
+        </nav>
+      )}
     </header>
   );
 }
