@@ -28,14 +28,14 @@ export default function Header() {
 
                   {/* Logo */}
           <div className="shrink-0">
-          3  <Link href="/" onClick={() => setMenuAberto(false)}>
-          4    <img
-          5      src="/img/logo.png"
-          6      alt="Tupã Áudio"
-          7      className="h-8 w-auto"
-          8    />
-          9  </Link>
-          10</div>
+            <Link href="/" onClick={() => setMenuAberto(false)}>
+              <img
+                src="/img/logo.png"
+                alt="Tupã Áudio"
+                className="h-8 w-auto"
+              />
+            </Link>
+          </div>
 
         {/* Navegação desktop */}
         <nav className="hidden md:flex gap-6 items-center">
