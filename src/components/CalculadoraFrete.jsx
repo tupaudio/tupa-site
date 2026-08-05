@@ -2,6 +2,26 @@
 'use client';
 import { useState, useEffect } from 'react';
 
+// Simulação de cálculo de frete (substituir pela API real)
+const calcularFreteSimulado = (cep, itens) => {
+  // Simula diferentes valores de frete baseado no CEP
+  const ultimoDigito = parseInt(cep.replace(/\D/g, '').slice(-1)) || 0;
+  
+  const opcoes = [
+    { id: 'sedex', nome: 'Sedex', valor: 25 + (ultimoDigito % 5) * 2, prazo: '2-3 dias' },
+    { id: 'pac', nome: 'PAC', valor: 15 + (ultimoDigito % 3) * 3, prazo: '5-7 dias' },
+    { id: 'local', nome: 'Frete local — a combinar com o fabricante', valor: 0, prazo: 'A combinar' },
+  ];
+  
+  // Filtra opções baseado no peso/valor dos itens (simplificado)
+  const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
+  if (totalItens > 5) {
+    opcoes[0].valor += 10; // Sedex mais caro para muitas unidades
+  }
+  
+  return opcoes;
+};
+
 export default function CalculadoraFrete({ itens, onSelecionar, cepInicial = '' }) {
   const [cep, setCep] = useState(cepInicial);
   const [opcoes, setOpcoes] = useState([]);
@@ -16,8 +36,8 @@ export default function CalculadoraFrete({ itens, onSelecionar, cepInicial = '' 
     }
   }, [cepInicial]);
 
-  const calcularFrete = async (cepParaCalcular) => {
-    const cepLimpo = (cepParaCalcular || cep).replace(/\D/g, '');
+  const handleCalcularFrete = () => {
+    const cepLimpo = cep.replace(/\D/g, '');
     if (cepLimpo.length !== 8) {
       setErro('Digite um CEP válido com 8 dígitos.');
       return;
@@ -29,57 +49,37 @@ export default function CalculadoraFrete({ itens, onSelecionar, cepInicial = '' 
     setSelecionado(null);
     onSelecionar(null);
 
-    try {
-      const res = await fetch('/api/frete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cepDestino: cepLimpo, itens }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setErro(data.error || 'Erro ao calcular frete. Tente novamente.');
-        return;
+    // Simula requisição à API de frete
+    setTimeout(() => {
+      try {
+        const opcoesCalculadas = calcularFreteSimulado(cep, itens);
+        setOpcoes(opcoesCalculadas);
+        // Seleciona a primeira opção por padrão (frete local se disponível)
+        const freteLocal = opcoesCalculadas.find(o => o.id === 'local');
+        if (freteLocal) {
+          setSelecionado(freteLocal);
+          onSelecionar(freteLocal);
+        } else if (opcoesCalculadas.length > 0) {
+          setSelecionado(opcoesCalculadas[0]);
+          onSelecionar(opcoesCalculadas[0]);
+        }
+        setCarregando(false);
+      } catch (err) {
+        setErro('Erro ao calcular frete. Tente novamente.');
+        setCarregando(false);
       }
-
-      // Monta opções retornadas pelo Melhor Envio + frete local fixo
-      const opcoesReais = data.map((t) => ({
-        id: String(t.id),
-        nome: `${t.company?.name} — ${t.name}`,
-        valor: parseFloat(t.price),
-        prazo: `${t.delivery_range?.min}–${t.delivery_range?.max} dias úteis`,
-      }));
-
-      const freteLocal = {
-        id: 'local',
-        nome: 'Frete local — a combinar com o fabricante',
-        valor: 0,
-        prazo: 'A combinar',
-      };
-
-      const todasOpcoes = [...opcoesReais, freteLocal];
-      setOpcoes(todasOpcoes);
-
-      // Não pré-seleciona nenhuma — cliente escolhe conscientemente
-      setSelecionado(null);
-      onSelecionar(null);
-
-    } catch (err) {
-      console.error('[CalculadoraFrete] Erro:', err);
-      setErro('Erro de conexão. Tente novamente.');
-    } finally {
-      setCarregando(false);
-    }
+    }, 800);
   };
 
-  // Debounce: calcula automaticamente quando o CEP fica completo
+  // Debounce para calcular automaticamente quando o CEP muda
   useEffect(() => {
     const cepLimpo = cep.replace(/\D/g, '');
-    if (cepLimpo.length !== 8) return;
-
-    const timer = setTimeout(() => calcularFrete(cep), 600);
-    return () => clearTimeout(timer);
+    if (cepLimpo.length === 8) {
+      const timer = setTimeout(() => {
+        handleCalcularFrete();
+      }, 500); // Debounce de 500ms
+      return () => clearTimeout(timer);
+    }
   }, [cep]);
 
   const formatarPreco = (valor) =>
@@ -109,7 +109,7 @@ export default function CalculadoraFrete({ itens, onSelecionar, cepInicial = '' 
         </div>
         <button
           type="button"
-          onClick={() => calcularFrete(cep)}
+          onClick={handleCalcularFrete}
           disabled={carregando || cep.replace(/\D/g, '').length !== 8}
           className="bg-tupaGold text-tupaBlack px-6 py-2 rounded font-bold hover:bg-white transition-colors disabled:opacity-50 self-end sm:self-auto"
         >
@@ -131,8 +131,8 @@ export default function CalculadoraFrete({ itens, onSelecionar, cepInicial = '' 
               key={opcao.id}
               className={`
                 flex items-center justify-between p-3 rounded border cursor-pointer transition-colors
-                ${selecionado?.id === opcao.id
-                  ? 'border-tupaGold bg-tupaGold/10'
+                ${selecionado?.id === opcao.id 
+                  ? 'border-tupaGold bg-tupaGold/10' 
                   : 'border-tupaWood/30 hover:border-tupaWood'
                 }
               `}
