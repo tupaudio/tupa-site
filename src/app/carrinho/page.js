@@ -1,9 +1,11 @@
+// src/app/carrinho/page.js
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
 import CalculadoraFrete from '@/components/CalculadoraFrete';
 import OtimizadaImagem from '@/components/OtimizadaImagem';
+import { getImagemProduto, getImagemProdutoOriginal } from '@/utils/imagens';
 
 // Componente do Stepper
 function Stepper({ passoAtual, passos }) {
@@ -72,127 +74,71 @@ export default function CarrinhoPage() {
   const [erro, setErro] = useState('');
   const [buscandoCep, setBuscandoCep] = useState(false);
   const [termos, setTermos] = useState(false);
-  const cepAbortRef = useRef(null);
-  const cepInputRef = useRef(null);
-  const docInputRef = useRef(null);
-  const telefoneInputRef = useRef(null);
 
   // Estados para monitoramento assíncrono do checkout externo
   const [checkoutIniciado, setCheckoutIniciado] = useState(false);
   const [linkPagamento, setLinkPagamento] = useState('');
   const [extRef, setExtRef] = useState('');
-  const [janelaMercadoPago, setJanelaMercadoPago] = useState(null);
+  const janelaPagamentoRef = useRef(null);
 
-  // Polling com fechamento automático da janela
+  // Efeito de pooling de segundo plano para verificar status via external_reference
   useEffect(() => {
     if (!checkoutIniciado || !extRef) return;
 
-    let interval = setInterval(async () => {
+    const interval = setInterval(async () => {
       try {
         const res = await fetch(`/api/status-pagamento?external_reference=${extRef}`);
         const data = await res.json();
 
         if (data.status === 'approved') {
           clearInterval(interval);
-          
-          if (janelaMercadoPago && !janelaMercadoPago.closed) {
-            janelaMercadoPago.close();
-          }
-          
           clearCart();
+          // Fecha a aba do Mercado Pago (se ainda estiver aberta) — a aba
+          // original (esta) já confirmou o pagamento de forma independente,
+          // então a outra aba não tem mais serventia. Fechar por aqui (do
+          // lado de quem abriu) é mais confiável do que a própria aba do
+          // Mercado Pago tentar se fechar sozinha, porque o Mercado Pago às
+          // vezes isola a página deles com políticas de segurança (COOP)
+          // que quebram a referência window.opener no lado de lá.
+          if (janelaPagamentoRef.current && !janelaPagamentoRef.current.closed) {
+            janelaPagamentoRef.current.close();
+          }
           window.location.href = '/sucesso';
         }
       } catch (err) {
         console.error("Erro ao verificar o status de pagamento:", err);
       }
-    }, 4000);
+    }, 4000); // Executa a checagem a cada 4 segundos
 
     return () => clearInterval(interval);
-  }, [checkoutIniciado, extRef, clearCart, janelaMercadoPago]);
+  }, [checkoutIniciado, extRef, clearCart]);
 
-  // Busca endereço via ViaCEP com proteção contra race condition
   const buscarEnderecoPorCep = async (cepDigitado) => {
     const cepLimpo = cepDigitado.replace(/\D/g, '');
     if (cepLimpo.length !== 8) return;
 
-    if (cepAbortRef.current) cepAbortRef.current.abort();
-    const controller = new AbortController();
-    cepAbortRef.current = controller;
-
     setBuscandoCep(true);
-    setErro('');
-
     try {
-      const res = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`, {
-        signal: controller.signal,
-      });
+      const res = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
       const data = await res.json();
-
-      if (data.erro) {
-        setErro('CEP não encontrado. Verifique o número digitado.');
+      if (!data.erro) {
         setEndereco((prev) => ({
           ...prev,
-          rua: '',
-          bairro: '',
-          cidade: '',
-          uf: '',
+          rua: data.logradouro || prev.rua,
+          bairro: data.bairro || prev.bairro,
+          cidade: data.localidade || prev.cidade,
+          uf: data.uf || prev.uf,
         }));
-        return;
       }
-
-      setEndereco((prev) => ({
-        ...prev,
-        rua: data.logradouro || '',
-        bairro: data.bairro || '',
-        cidade: data.localidade || '',
-        uf: data.uf || '',
-      }));
-
-    } catch (error) {
-      if (error.name === 'AbortError') return;
-      console.error('Erro ao buscar CEP:', error);
-      setErro('Erro ao buscar endereço. Preencha manualmente.');
+    } catch {
+      // Se a busca falhar, o cliente preenche na mão
     } finally {
-      if (cepAbortRef.current === controller) setBuscandoCep(false);
+      setBuscandoCep(false);
     }
   };
 
-  // Máscara de CEP: 00000-000
-  const aplicarMascaraCep = (valor) => {
-    let v = valor.replace(/\D/g, '').slice(0, 8);
-    if (v.length > 5) v = v.slice(0, 5) + '-' + v.slice(5);
-    return v;
-  };
-
-  // Máscara preservando cursor
-  const aplicarMascaraPreservandoCursor = (e, aplicarMascara, setValor) => {
-    const el = e.target;
-    const valorBruto = el.value;
-    const cursorPos = el.selectionStart ?? valorBruto.length;
-    const digitosAntesDoCursor = valorBruto.slice(0, cursorPos).replace(/\D/g, '').length;
-
-    const novoValor = aplicarMascara(valorBruto);
-    setValor(novoValor);
-
-    requestAnimationFrame(() => {
-      if (!el) return;
-      let contados = 0;
-      let novaPos = novoValor.length;
-      for (let i = 0; i < novoValor.length; i++) {
-        if (/\d/.test(novoValor[i])) {
-          contados++;
-          if (contados === digitosAntesDoCursor) {
-            novaPos = i + 1;
-            break;
-          }
-        }
-      }
-      if (digitosAntesDoCursor === 0) novaPos = 0;
-      el.setSelectionRange(novaPos, novaPos);
-    });
-  };
-
-  // Máscara de CPF/CNPJ
+  // Máscara de CPF (000.000.000-00) ou CNPJ (00.000.000/0000-00),
+  // detectada automaticamente pela quantidade de dígitos
   const aplicarMascaraDoc = (valor) => {
     const digitos = valor.replace(/\D/g, '').slice(0, 14);
     if (digitos.length <= 11) {
@@ -208,7 +154,7 @@ export default function CarrinhoPage() {
       .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
   };
 
-  // Máscara de telefone
+  // Máscara de telefone: (00) 0000-0000 ou (00) 00000-0000
   const aplicarMascaraTelefone = (valor) => {
     const digitos = valor.replace(/\D/g, '').slice(0, 11);
     if (digitos.length <= 10) {
@@ -266,7 +212,6 @@ export default function CarrinhoPage() {
     setPasso(novoPasso);
   };
 
-  // ✅ CORRIGIDO: Envolvido em <form> com onSubmit
   const finalizarCompra = async (e) => {
     e.preventDefault();
     setErro('');
@@ -313,9 +258,8 @@ export default function CarrinhoPage() {
       setCheckoutIniciado(true);
       setCarregando(false);
 
-      const novaJanela = window.open(data.init_point, '_blank');
-      setJanelaMercadoPago(novaJanela);
-      
+      // Abre o Mercado Pago em aba paralela externa para o fluxo do Pix/Cartão
+      janelaPagamentoRef.current = window.open(data.init_point, '_blank');
     } catch (err) {
       setErro('Erro ao conectar com o pagamento. Tente novamente.');
       setCarregando(false);
@@ -326,20 +270,19 @@ export default function CarrinhoPage() {
 
   if (cart.length === 0) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center text-tupaOffWhite p-10">
+      <main className="min-h-screen flex flex-col items-center justify-center text-tupaOffWhite p-10">
         <h1 className="text-3xl font-serif text-tupaGold mb-4">Seu carrinho está vazio</h1>
         <Link href="/loja" className="bg-tupaGold text-tupaBlack px-6 py-3 rounded font-bold hover:bg-white transition-colors">
           Ver amplificadores
         </Link>
-      </div>
+      </main>
     );
   }
 
   const campoClasse = "w-full min-w-0 bg-tupaBlack border border-tupaWood rounded px-4 py-2 text-tupaOffWhite placeholder-tupaSilver/50 focus:outline-none focus:border-tupaGold transition-colors";
 
-  // ✅ CORRIGIDO: Removido <main> aninhado
   return (
-    <div className="max-w-4xl mx-auto p-6 md:p-10 text-tupaOffWhite space-y-8">
+    <main className="max-w-4xl mx-auto p-6 md:p-10 text-tupaOffWhite space-y-8">
       <h1 className="text-3xl font-serif text-tupaGold uppercase tracking-widest">Checkout</h1>
 
       {/* Stepper */}
@@ -409,26 +352,23 @@ export default function CarrinhoPage() {
               className={campoClasse}
             />
             <input
-              ref={docInputRef}
               required
               type="text"
-              inputMode="numeric"
               placeholder="CPF / CNPJ (para nota fiscal) *"
               value={doc}
-              onChange={(e) => aplicarMascaraPreservandoCursor(e, aplicarMascaraDoc, setDoc)}
+              onChange={(e) => setDoc(aplicarMascaraDoc(e.target.value))}
               className={campoClasse}
             />
             <input
-              ref={telefoneInputRef}
               type="tel"
               placeholder="Telefone / WhatsApp"
               value={telefone}
-              onChange={(e) => aplicarMascaraPreservandoCursor(e, aplicarMascaraTelefone, setTelefone)}
+              onChange={(e) => setTelefone(aplicarMascaraTelefone(e.target.value))}
               className={campoClasse}
             />
           </div>
 
-          {erro && <p className="text-red-400 text-sm font-bold" role="alert" aria-live="assertive">{erro}</p>}
+          {erro && <p className="text-red-400 text-sm font-bold">{erro}</p>}
 
           <button
             type="button"
@@ -443,6 +383,7 @@ export default function CarrinhoPage() {
       {/* PASSO 2: Entrega */}
       {passo === 2 && (
         <div className="space-y-4">
+          {/* Resumo rápido do pedido */}
           <div className="bg-tupaGrey border border-tupaWood rounded-lg p-4">
             <h3 className="text-tupaGold font-serif text-sm uppercase tracking-wider mb-2">Resumo do pedido</h3>
             <p className="text-tupaSilver text-sm">
@@ -450,45 +391,26 @@ export default function CarrinhoPage() {
             </p>
           </div>
 
+          {/* Endereço */}
           <div className="bg-tupaGrey border border-tupaWood rounded-lg p-6 space-y-4">
             <h2 className="text-tupaGold font-serif text-xl">Endereço de entrega</h2>
             <p className="text-tupaSilver text-xs">Campos com * são obrigatórios.</p>
 
             <div className="grid sm:grid-cols-3 gap-4">
-              <div className="relative">
-                <input
-                  ref={cepInputRef}
-                  required
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="CEP *"
-                  maxLength={9}
-                  value={endereco.cep}
-                  aria-busy={buscandoCep}
-                  aria-describedby="cep-status"
-                  onChange={(e) => {
-                    aplicarMascaraPreservandoCursor(
-                      e,
-                      aplicarMascaraCep,
-                      (novoValor) => {
-                        setEndereco((prev) => ({ ...prev, cep: novoValor }));
-                        if (novoValor.replace(/\D/g, '').length === 8) buscarEnderecoPorCep(novoValor);
-                      }
-                    );
-                  }}
-                  className={`${campoClasse} pr-9`}
-                />
-                {buscandoCep && (
-                  <div
-                    className="absolute right-3 top-1/2 -translate-y-1/2"
-                    role="status"
-                    id="cep-status"
-                  >
-                    <div className="w-4 h-4 border-2 border-tupaGold border-t-transparent rounded-full animate-spin" />
-                    <span className="sr-only">Buscando endereço...</span>
-                  </div>
-                )}
-              </div>
+              <input
+                required
+                type="text"
+                placeholder={buscandoCep ? 'Buscando endereço...' : 'CEP *'}
+                maxLength={9}
+                value={endereco.cep}
+                onChange={(e) => {
+                  let v = e.target.value.replace(/\D/g, '').slice(0, 8);
+                  if (v.length > 5) v = v.slice(0, 5) + '-' + v.slice(5);
+                  setEndereco({ ...endereco, cep: v });
+                  if (v.replace(/\D/g, '').length === 8) buscarEnderecoPorCep(v);
+                }}
+                className={campoClasse}
+              />
               <input
                 required
                 type="text"
@@ -538,8 +460,9 @@ export default function CarrinhoPage() {
               />
             </div>
 
+            {/* Cálculo de frete */}
             <div className="pt-4 border-t border-tupaWood/30">
-              <CalculadoraFrete itens={cart} onSelecionar={setFrete} cepInicial={endereco.cep} />
+              <CalculadoraFrete itens={cart} onSelecionar={setFrete} />
               {frete && (
                 <div className="flex justify-between text-sm text-tupaSilver mt-2">
                   <span>Frete selecionado:</span>
@@ -548,6 +471,7 @@ export default function CarrinhoPage() {
               )}
             </div>
 
+            {/* Termos */}
             <div className="flex items-start gap-3 pt-4 border-t border-tupaWood/30">
               <input
                 type="checkbox"
@@ -569,7 +493,7 @@ export default function CarrinhoPage() {
               </label>
             </div>
 
-            {erro && <p className="text-red-400 text-sm font-bold" role="alert" aria-live="assertive">{erro}</p>}
+            {erro && <p className="text-red-400 text-sm font-bold">{erro}</p>}
 
             <div className="flex gap-4">
               <button
@@ -599,25 +523,10 @@ export default function CarrinhoPage() {
               <h2 className="text-tupaGold font-serif text-2xl tracking-wide animate-pulse">
                 Aguardando Pagamento...
               </h2>
-              // ✅ NOVO — orienta claramente o cliente PIX a fechar a aba
-                  <div className="space-y-3 max-w-md mx-auto">
-                    <p className="text-tupaSilver text-sm">
-                      Uma aba segura do Mercado Pago foi aberta para você efetuar o pagamento.
-                    </p>
-                    <div className="bg-tupaBlack border border-tupaGold/40 rounded-lg p-4 text-left space-y-2">
-                      <p className="text-tupaGold text-xs font-bold uppercase tracking-widest">Pagando via PIX?</p>
-                      <ol className="text-tupaSilver text-sm space-y-1 list-decimal list-inside">
-                        <li>Escaneie o QR Code ou copie a chave na aba do Mercado Pago</li>
-                        <li>Efetue o pagamento no seu banco</li>
-                        <li>Feche a aba do Mercado Pago manualmente</li>
-                        <li>Esta página confirmará o pedido automaticamente ✅</li>
-                      </ol>
-                    </div>
-                    <p className="text-tupaSilver/60 text-xs">
-                      Pagando com cartão? A confirmação é imediata e a aba fecha automaticamente.
-                    </p>
-                  </div>
-
+              <p className="text-tupaSilver text-sm max-w-md mx-auto">
+                Uma aba externa e segura do Mercado Pago foi inicializada para você efetuar a transação via Pix ou Cartão.
+                Assim que processado com sucesso, esta janela redirecionará você automaticamente.
+              </p>
               
               <div className="py-4">
                 <div className="w-8 h-8 border-4 border-tupaGold border-t-transparent rounded-full animate-spin mx-auto"></div>
@@ -634,40 +543,23 @@ export default function CarrinhoPage() {
                   Abrir ambiente de pagamento novamente
                 </a>
               </div>
-
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (janelaMercadoPago && !janelaMercadoPago.closed) {
-                      janelaMercadoPago.close();
-                    }
-                    setCheckoutIniciado(false);
-                    setLinkPagamento('');
-                    setExtRef('');
-                  }}
-                  className="text-xs text-tupaSilver underline hover:text-tupaGold transition-colors"
-                >
-                  Cancelar e voltar para a revisão do pedido
-                </button>
-              </div>
             </div>
           ) : (
-            // ✅ CORRIGIDO: Envolvido em <form>
-            <form onSubmit={finalizarCompra} className="bg-tupaGrey border border-tupaWood rounded-lg p-6 space-y-4">
+            <div className="bg-tupaGrey border border-tupaWood rounded-lg p-6 space-y-4">
               <h2 className="text-tupaGold font-serif text-xl">Revisão do pedido</h2>
 
+              {/* Itens */}
               <div className="space-y-3">
                 {cart.map((item) => (
                   <div key={item.id} className="flex items-center gap-4 border-b border-tupaWood/30 pb-3 last:border-0 last:pb-0">
                     <OtimizadaImagem
-                      src={item.pastaImagens ? `/img/${item.pastaImagens}/1.png` : '/img/placeholder-produto.png'}
+                      src={getImagemProduto(item, 1)}
                       alt={item.nome}
                       width={50}
                       height={50}
                       className="rounded border border-tupaWood/50 object-cover"
                       sizes="50px"
-                      fallbackSrc="/img/placeholder-produto.png"
+                      fallbackSrc={getImagemProdutoOriginal(item, 1)}
                     />
                     <div className="flex-1">
                       <p className="text-sm text-tupaOffWhite">{item.nome}</p>
@@ -678,6 +570,7 @@ export default function CarrinhoPage() {
                 ))}
               </div>
 
+              {/* Totais */}
               <div className="border-t border-tupaWood/30 pt-4 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-tupaSilver">Subtotal</span>
@@ -695,13 +588,14 @@ export default function CarrinhoPage() {
                 </div>
               </div>
 
+              {/* Dados do cliente */}
               <div className="bg-tupaBlack p-4 rounded border border-tupaWood/30 text-sm">
                 <p className="text-tupaSilver"><span className="text-tupaGold">Nome:</span> {nome}</p>
                 <p className="text-tupaSilver"><span className="text-tupaGold">E-mail:</span> {email}</p>
                 <p className="text-tupaSilver"><span className="text-tupaGold">Entrega:</span> {endereco.rua}, {endereco.numero} {endereco.complemento ? `- ${endereco.complemento}` : ''}, {endereco.bairro} - {endereco.cidade}/{endereco.uf}, CEP: {endereco.cep}</p>
               </div>
 
-              {erro && <p className="text-red-400 text-sm font-bold" role="alert" aria-live="assertive">{erro}</p>}
+              {erro && <p className="text-red-400 text-sm font-bold">{erro}</p>}
 
               <div className="flex gap-4">
                 <button
@@ -713,16 +607,17 @@ export default function CarrinhoPage() {
                 </button>
                 <button
                   type="submit"
+                  onClick={finalizarCompra}
                   disabled={carregando}
                   className="flex-1 bg-tupaGold text-tupaBlack py-3 rounded font-bold uppercase tracking-widest hover:bg-white transition-colors disabled:opacity-50"
                 >
                   {carregando ? 'Processando...' : 'Finalizar Compra'}
                 </button>
               </div>
-            </form>
+            </div>
           )}
         </div>
       )}
-    </div>
+    </main>
   );
 }
